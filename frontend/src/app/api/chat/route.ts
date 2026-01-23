@@ -1,0 +1,145 @@
+import { NextRequest } from 'next/server';
+import { PRODUCT_JUDGE_SYSTEM_PROMPT } from '@/data/prompts';
+
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+
+interface Message {
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+}
+
+async function getKnowledgeContext(query: string): Promise<string> {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/knowledge`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, k: 5 }),
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return data.context || '';
+        }
+    } catch (error) {
+        console.error('Failed to fetch knowledge context:', error);
+    }
+    return '';
+}
+
+export async function POST(req: NextRequest) {
+    const { messages } = await req.json();
+
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+        return new Response(JSON.stringify({ error: 'API key not configured' }), { status: 500 });
+    }
+
+    // 构建更完整的查询：结合最近几轮对话内容
+    const recentMessages = messages.slice(-6); // 最近 3 轮对话
+    const conversationContext = recentMessages
+        .map((m: Message) => m.content)
+        .join('\n');
+
+    // 从后端获取相关知识库内容
+    const knowledgeContext = await getKnowledgeContext(conversationContext);
+
+    // 构建增强的系统提示词
+    let enhancedSystemPrompt = PRODUCT_JUDGE_SYSTEM_PROMPT;
+
+    if (knowledgeContext) {
+        enhancedSystemPrompt += `
+
+## 知识库内容（请在对话中自然引用）
+
+以下是与当前对话相关的产品案例、理论和经验：
+
+${knowledgeContext}
+
+---
+
+**如何使用这些知识：**
+1. 在追问时引用相关案例："这让我想到 [某产品] 早期也遇到过类似的问题..."
+2. 分享相关理论："有一个叫 [某理论] 的概念，说的就是这种情况..."
+3. 提供参考："[某公司] 当时的做法是...你觉得这个思路对你有启发吗？"
+4. 建立共鸣："很多成功的产品在早期都面临过这个挑战，比如..."
+
+记住：你不是在考试用户，而是在和用户一起探索。分享知识是为了帮助用户思考，而不是炫耀。`;
+    }
+
+    const openRouterMessages = [
+        { role: 'system', content: enhancedSystemPrompt },
+        ...messages,
+    ];
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': process.env.APP_URL || 'http://localhost:3000',
+            'X-Title': 'ProductThink',
+        },
+        body: JSON.stringify({
+            model: 'anthropic/claude-3.5-sonnet',
+            messages: openRouterMessages,
+            stream: true,
+        }),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('OpenRouter API Error:', errorBody);
+        return new Response(JSON.stringify({ error: 'Failed to get AI response' }), { status: response.status });
+    }
+
+    if (!response.body) {
+        return new Response(JSON.stringify({ error: 'No response stream' }), { status: 500 });
+    }
+
+    const stream = new ReadableStream({
+        async start(controller) {
+            const reader = response.body!.getReader();
+            const decoder = new TextDecoder();
+            const encoder = new TextEncoder();
+            let buffer = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith('data:')) continue;
+                    const data = trimmed.slice(5).trim();
+                    if (data === '[DONE]') {
+                        controller.close();
+                        return;
+                    }
+
+                    try {
+                        const json = JSON.parse(data);
+                        const delta = json.choices?.[0]?.delta?.content;
+                        if (delta) {
+                            controller.enqueue(encoder.encode(delta));
+                        }
+                    } catch (error) {
+                        console.error('Failed to parse stream chunk:', error);
+                    }
+                }
+            }
+
+            controller.close();
+        },
+    });
+
+    return new Response(stream, {
+        status: 200,
+        headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-cache',
+        },
+    });
+}
