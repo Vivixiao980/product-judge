@@ -1,0 +1,131 @@
+================================================================================
+                    AI学习工具与资源清单
+                    来源：张咋啦（Zara）小红书笔记
+================================================================================
+
+【一、日常AI工具】
+
+聊天/助手类：
+- Claude：brainstorming、写作、日常谈心（有"情商"，性格好）
+- ChatGPT：通用助手
+- Perplexity：搜索+问答，比传统搜索更高效
+- DeepSeek：推理能力强，注意用法（给context，不要过度control）
+
+会议纪要工具：
+- Granola：AI会议纪要标杆产品，"谦虚的AI"理念
+- Quill：Highlight point功能很创新
+
+内容学习工具：
+- NotebookLM：把内容转成AI播客讲解，支持论文、视频、长文
+- Snipd：AI播客工具，高效学习
+- ElevenReader：AI语音朗读，适合背稿
+
+编程/开发工具：
+- Cursor：AI编程，Tab预测功能强
+- Windsurf：AI编程工具
+- Replit：无代码也能搭建产品
+- Bolt, Lovable：快速原型工具
+
+其他实用工具：
+- Google AI Studio + Gemini：搭建AI小工具
+- Excalidraw：开源白板工具，手绘风格
+- Cleanshot X：录屏工具
+- 剪映：视频剪辑
+
+
+【二、值得体验的创新AI产品】
+
+交互创新产品：
+- Poke：颠覆性AI交互体验
+- Pillowtalk：AI voice journal，用语音倾诉
+- Tolan：AI陪伴+性格测试
+- Granola：人机协作的会议纪要
+
+内容/学习类：
+- Huxe：NotebookLM团队创业产品，个性化音频
+- Particle News：AIGC+个性化推荐
+- Google Daily Listen：个性化AI播客
+
+浏览器/搜索：
+- Perplexity Comet：AI浏览器
+- Google AI Mode：类Perplexity的搜索体验
+
+
+【三、Google Labs实验性工具】
+
+Google Labs（labs.google）有很多好玩的AI小工具：
+- Google Career Dreamer：AI职业规划
+- 名画变音乐（英国国家美术馆合作）
+- 各种实验性AI应用
+
+
+【四、Newsletter订阅清单】
+
+必看（每期必看）：
+1. AI Valley - AI领域最新动态
+2. Every - 深度分析，质量很高
+3. The Keyword - Google官方动态
+4. AINews - 行业新闻汇总
+
+其他推荐：
+- Next Play - Ben Lang的职业发展内容
+- Lenny's Newsletter - 产品增长相关
+
+
+【五、播客节目清单】
+
+AI学习必听：
+1. Hard Fork - 科技新闻，主持人超搞笑
+2. Google DeepMind: The Podcast - 官方播客，研究员访谈
+3. Hallway Chat - 投资人视角，前OpenAI产品负责人主持
+4. TBPN - 硅谷行业动态
+
+商业/创业类：
+5. Acquired - 商业历史，长but质量高
+6. Next Play - 职业发展，大佬轨迹分析
+7. Uncapped - 创业者访谈
+
+
+【六、推荐书籍】
+
+AI/科技史：
+- Genius Makers - AI行业"史前史"
+- The MANIAC - 讲冯·诺依曼的小说，后劲足
+- Electrifying America - 电力普及对社会的影响，理解技术革命
+- Technology Matters - David Nye的科技史视角
+
+商业/创业：
+- The Whole Story (Whole Foods) - 创始人自传
+- Trader Joe's创始人自传
+- Very Bad Company - 创投圈讽刺小说
+- The fuzzy and the techie - 文科生在科技行业的价值
+
+Stripe Press出的书（都是精品）：
+- 技术、产品、创业主题
+- 有品味、高质量
+
+
+【七、X（Twitter）关注清单】
+
+必关注：
+- Andrej Karpathy - AI领域大神
+- Ethan Mollick - 沃顿商学院教授，AI应用视角
+- Dan Shipper - Every创始人
+- Gabriel - 没上大学进OpenAI的小哥
+
+AI创业者：
+- 各AI创业公司创始人和CEO
+- 在X上build in public的开发者
+
+关注技巧：
+- 把X调教成AI前沿知识平台
+- Follow builders, not influencers
+- 把它想象成一个AI圈的群聊
+
+
+================================================================================
+使用建议：
+1. 不要贪多，选择2-3个信息源深度关注
+2. Newsletter + YouTube + X 三位一体
+3. 定期体验新产品，保持产品感觉
+================================================================================
