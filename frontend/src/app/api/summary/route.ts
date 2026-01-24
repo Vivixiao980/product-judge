@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
         return new Response(JSON.stringify({ error: 'API key not configured' }), { status: 500 });
     }
 
-    const recentMessages = messages.slice(-10);
+    // 取最近 16 条消息，确保有足够上下文
+    const recentMessages = messages.slice(-16);
     const summaryPrompt = [
         {
             role: 'system',

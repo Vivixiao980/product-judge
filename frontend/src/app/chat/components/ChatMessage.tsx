@@ -45,10 +45,18 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkBreaks]}
                     components={{
-                        p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
-                        ul: ({ children }) => <ul className="pl-5 my-1 list-disc">{children}</ul>,
-                        ol: ({ children }) => <ol className="pl-5 my-1 list-decimal">{children}</ol>,
-                        li: ({ children }) => <li className="mb-0">{children}</li>,
+                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                        ul: ({ children }) => <ul className="pl-5 my-2 list-disc space-y-1">{children}</ul>,
+                        ol: ({ children, start }) => (
+                            <ol className="pl-5 my-2 list-decimal space-y-1" start={start}>
+                                {children}
+                            </ol>
+                        ),
+                        li: ({ children, index }) => (
+                            <li className="mb-0.5" value={typeof index === 'number' ? index + 1 : undefined}>
+                                {children}
+                            </li>
+                        ),
                         strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
                         em: ({ children }) => <em className="italic">{children}</em>,
                         code: ({ children, className }) => {

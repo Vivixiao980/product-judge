@@ -156,6 +156,8 @@ export function useChat() {
     });
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const prevStageRef = useRef<Stage | null>(null);
+    const shouldScrollRef = useRef(false);
+    const isUserScrollingRef = useRef(false);
 
     // 计算当前阶段（提前计算，供后续使用）
     const currentStage = computeStage(summary);
@@ -174,11 +176,17 @@ export function useChat() {
     }, [currentStage]);
 
     const scrollToBottom = useCallback(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (!isUserScrollingRef.current) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
     }, []);
 
+    // 只在需要时滚动（用户发送消息后）
     useEffect(() => {
-        scrollToBottom();
+        if (shouldScrollRef.current) {
+            scrollToBottom();
+            shouldScrollRef.current = false;
+        }
     }, [messages, scrollToBottom]);
 
     const requestSummary = useCallback(async (snapshot: Message[]) => {
@@ -217,6 +225,10 @@ export function useChat() {
         if (isQuickAction) {
             trackQuickAction(isQuickAction);
         }
+
+        // 用户发送消息时，标记需要滚动
+        shouldScrollRef.current = true;
+        isUserScrollingRef.current = false;
 
         const userMsg: Message = { id: Date.now().toString(), role: 'user', content };
         const currentMessages = [...messages, userMsg];
@@ -327,6 +339,7 @@ export function useChat() {
         messages,
         summary,
         messagesEndRef,
+        isUserScrollingRef,
         currentStage,
         stageConfig,
         handleSend,

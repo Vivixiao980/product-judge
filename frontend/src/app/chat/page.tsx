@@ -12,6 +12,7 @@ export default function ChatPage() {
         messages,
         summary,
         messagesEndRef,
+        isUserScrollingRef,
         currentStage,
         stageConfig,
         handleSend,
@@ -23,7 +24,11 @@ export default function ChatPage() {
             <div className="grid h-full max-w-6xl mx-auto w-full lg:grid-cols-[1fr_320px] gap-6 px-4">
                 <div className="flex flex-col">
                     <PhaseIndicator currentStage={currentStage} />
-                    <MessageList messages={messages} messagesEndRef={messagesEndRef} />
+                    <MessageList
+                        messages={messages}
+                        messagesEndRef={messagesEndRef}
+                        isUserScrollingRef={isUserScrollingRef}
+                    />
                     <ChatInput
                         input={input}
                         setInput={setInput}
