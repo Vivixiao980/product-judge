@@ -90,12 +90,32 @@ export default function AnalyticsPage() {
     if (data) setSelectedConversation(data.conversation);
   };
 
+  // 尝试自动登录（从 localStorage 恢复）
   useEffect(() => {
     const savedPassword = localStorage.getItem('admin_password');
-    if (savedPassword) {
+    if (savedPassword && !isAuthenticated) {
       setPassword(savedPassword);
+      // 使用保存的密码尝试登录
+      const tryAutoLogin = async () => {
+        setIsLoading(true);
+        try {
+          const response = await fetch('/api/admin?view=overview', {
+            headers: { Authorization: `Bearer ${savedPassword}` },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setIsAuthenticated(true);
+            setOverview(data);
+          }
+        } catch {
+          // 自动登录失败，用户需要手动登录
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      tryAutoLogin();
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isAuthenticated && activeTab === 'overview') {
