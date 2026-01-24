@@ -52,8 +52,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
                                 {children}
                             </ol>
                         ),
-                        li: ({ children, index }) => (
-                            <li className="mb-0.5" value={typeof index === 'number' ? index + 1 : undefined}>
+                        li: ({ children }) => (
+                            <li className="mb-0.5">
                                 {children}
                             </li>
                         ),
