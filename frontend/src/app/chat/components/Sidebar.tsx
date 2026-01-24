@@ -1,15 +1,29 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
-import { Summary, StageConfig } from '../types';
+import { Users } from 'lucide-react';
+import { Summary, StageConfig, Stage } from '../types';
 
 interface SidebarProps {
     stageConfig: StageConfig;
     summary: Summary;
     isSummarizing: boolean;
+    currentStage: Stage;
 }
 
-export function Sidebar({ stageConfig, summary, isSummarizing }: SidebarProps) {
+export function Sidebar({ stageConfig, summary, isSummarizing, currentStage }: SidebarProps) {
+    const router = useRouter();
+
+    const handleStartAnalysis = () => {
+        // 保存 summary 到 sessionStorage
+        sessionStorage.setItem('analysis_summary', JSON.stringify(summary));
+        router.push('/analysis');
+    };
+
+    // 判断是否可以进入多视角分析（至少有产品描述）
+    const canStartAnalysis = summary.product && !summary.product.includes('等待你介绍');
+
     return (
         <aside className="hidden lg:flex flex-col gap-4 py-4">
             {/* Stage Progress */}
@@ -34,6 +48,35 @@ export function Sidebar({ stageConfig, summary, isSummarizing }: SidebarProps) {
                 </div>
                 <div className="mt-3 text-xs text-gray-500">{stageConfig.takeaway}</div>
             </div>
+
+            {/* 多视角分析入口 */}
+            {canStartAnalysis && (
+                <button
+                    onClick={handleStartAnalysis}
+                    className={clsx(
+                        "border rounded-2xl p-4 text-left transition-all",
+                        currentStage === 'analysis'
+                            ? "border-black bg-black text-white"
+                            : "border-gray-100 bg-white hover:border-gray-300"
+                    )}
+                >
+                    <div className="flex items-center gap-3 mb-2">
+                        <Users size={20} />
+                        <span className="font-semibold">多视角分析</span>
+                    </div>
+                    <p className={clsx(
+                        "text-xs",
+                        currentStage === 'analysis' ? "text-gray-300" : "text-gray-500"
+                    )}>
+                        邀请多位专家从不同角度分析你的产品，生成完整诊断报告
+                    </p>
+                    {currentStage === 'analysis' && (
+                        <div className="mt-3 text-xs bg-white/20 rounded-lg px-2 py-1 inline-block">
+                            推荐现在进入
+                        </div>
+                    )}
+                </button>
+            )}
 
             {/* Summary */}
             <div className="border border-gray-100 bg-white rounded-2xl p-4 sticky top-4">

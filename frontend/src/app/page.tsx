@@ -21,7 +21,7 @@ export default function Home() {
           href="/chat"
           className="group relative flex flex-col items-start p-6 rounded-2xl border border-gray-200 hover:border-black transition-all hover:shadow-lg bg-white"
         >
-          <div className="mb-4 bg-white text-black border border-black p-2.5 rounded-lg">
+          <div className="mb-4 bg-gray-100 text-black p-2.5 rounded-lg">
             <MessageSquare size={20} />
           </div>
           <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center w-full justify-between">

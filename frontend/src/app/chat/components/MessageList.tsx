@@ -8,9 +8,10 @@ interface MessageListProps {
     messages: Message[];
     messagesEndRef: RefObject<HTMLDivElement | null>;
     isUserScrollingRef?: MutableRefObject<boolean>;
+    currentStage?: string;
 }
 
-export function MessageList({ messages, messagesEndRef, isUserScrollingRef }: MessageListProps) {
+export function MessageList({ messages, messagesEndRef, isUserScrollingRef, currentStage }: MessageListProps) {
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -48,7 +49,7 @@ export function MessageList({ messages, messagesEndRef, isUserScrollingRef }: Me
     return (
         <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-6">
             {messages.map((msg) => (
-                <ChatMessage key={msg.id} message={msg} />
+                <ChatMessage key={msg.id} message={msg} currentStage={currentStage} />
             ))}
             <div ref={messagesEndRef} />
         </div>

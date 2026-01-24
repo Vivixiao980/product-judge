@@ -3,7 +3,7 @@
 import { TrackEvent, TRACK_EVENTS } from './types';
 
 // 生成或获取会话 ID（同一次访问使用同一个 ID）
-const getSessionId = (): string => {
+export const getSessionId = (): string => {
   if (typeof window === 'undefined') return '';
 
   let sessionId = sessionStorage.getItem('track_session_id');
@@ -57,6 +57,31 @@ export function trackMessageSent(messageLength: number, stage: string) {
 // 便捷方法：收到回复
 export function trackMessageReceived(responseLength: number, stage: string) {
   track(TRACK_EVENTS.MESSAGE_RECEIVED, { responseLength, stage });
+}
+
+// 便捷方法：消息反馈
+export function trackMessageFeedback(messageId: string, vote: 'up' | 'down', stage?: string) {
+  track(TRACK_EVENTS.MESSAGE_FEEDBACK, { messageId, vote, stage });
+}
+
+export async function submitMessageFeedback(payload: {
+  messageId: string;
+  vote: 'up' | 'down';
+  comment?: string;
+  stage?: string;
+}): Promise<void> {
+  try {
+    await fetch('/api/message-feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...payload,
+        sessionId: getSessionId(),
+      }),
+    });
+  } catch (error) {
+    console.warn('[Feedback] Failed to submit message feedback', error);
+  }
 }
 
 // 便捷方法：阶段切换

@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
+function getClientIP(request: NextRequest): string {
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0].trim();
+  }
+  const realIP = request.headers.get('x-real-ip');
+  if (realIP) return realIP;
+  const cfConnectingIP = request.headers.get('cf-connecting-ip');
+  if (cfConnectingIP) return cfConnectingIP;
+  return 'unknown';
+}
+
 // POST: 保存或更新对话
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +29,9 @@ export async function POST(request: NextRequest) {
       messageCount: messages?.length || 0,
       stage,
     });
+
+    const ip = getClientIP(request);
+    const userAgent = request.headers.get('user-agent') || '';
 
     if (!isSupabaseConfigured || !supabaseAdmin) {
       console.warn('[CONVERSATION] Supabase not configured');
@@ -39,6 +54,8 @@ export async function POST(request: NextRequest) {
           summary,
           stage,
           message_count: messages?.length || 0,
+          ip_address: ip,
+          user_agent: userAgent,
         })
         .eq('session_id', sessionId);
 
@@ -56,6 +73,8 @@ export async function POST(request: NextRequest) {
           summary,
           stage,
           message_count: messages?.length || 0,
+          ip_address: ip,
+          user_agent: userAgent,
         });
 
       if (error) {

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Message, Summary, Stage, StageConfig } from './types';
 import { WELCOME_MESSAGE } from '@/data/prompts';
 import {
-    trackPageView,
+    trackChatStart,
     trackMessageSent,
     trackMessageReceived,
     trackStageChange,
@@ -162,11 +162,6 @@ export function useChat() {
     // 计算当前阶段（提前计算，供后续使用）
     const currentStage = computeStage(summary);
 
-    // 页面访问埋点
-    useEffect(() => {
-        trackPageView('chat');
-    }, []);
-
     // 阶段切换埋点
     useEffect(() => {
         if (prevStageRef.current && prevStageRef.current !== currentStage) {
@@ -220,6 +215,10 @@ export function useChat() {
     const sendMessage = useCallback(async (content: string, isQuickAction?: string) => {
         if (!content.trim() || isLoading) return;
 
+        if (!messages.some(msg => msg.role === 'user')) {
+            trackChatStart();
+        }
+
         // 埋点：发送消息
         trackMessageSent(content.length, currentStage);
         if (isQuickAction) {
@@ -233,6 +232,11 @@ export function useChat() {
         const userMsg: Message = { id: Date.now().toString(), role: 'user', content };
         const currentMessages = [...messages, userMsg];
         setMessages(currentMessages);
+        void saveConversation(
+            currentMessages.map(m => ({ role: m.role, content: m.content })),
+            summary,
+            currentStage
+        );
         setIsLoading(true);
         setIsThinking(true);
         void requestSummary(currentMessages);
@@ -308,7 +312,7 @@ export function useChat() {
             setIsLoading(false);
             setIsThinking(false);
         }
-    }, [isLoading, messages, requestSummary, currentStage]);
+    }, [isLoading, messages, requestSummary, currentStage, summary]);
 
     const handleSend = useCallback(async () => {
         if (!input.trim() || isLoading) return;

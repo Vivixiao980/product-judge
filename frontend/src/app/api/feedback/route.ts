@@ -1,22 +1,5 @@
 import { NextRequest } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
-
-const ROOT = '/Users/vivi/Documents/产品思考工具';
-const FEEDBACK_FILE = path.join(ROOT, 'backend', 'feedback.json');
-
-function readFeedback(): { items: any[] } {
-    if (!fs.existsSync(FEEDBACK_FILE)) {
-        fs.writeFileSync(FEEDBACK_FILE, JSON.stringify({ items: [] }, null, 2));
-    }
-    const raw = fs.readFileSync(FEEDBACK_FILE, 'utf-8');
-    return JSON.parse(raw || '{"items": []}');
-}
-
-function writeFeedback(data: { items: any[] }) {
-    fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(data, null, 2));
-}
+import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
     const payload = await req.json();
@@ -27,14 +10,19 @@ export async function POST(req: NextRequest) {
         return new Response(JSON.stringify({ error: '请填写意见内容' }), { status: 400 });
     }
 
-    const data = readFeedback();
-    data.items.unshift({
-        id: crypto.randomUUID(),
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+        return new Response(JSON.stringify({ error: 'Supabase not configured' }), { status: 503 });
+    }
+
+    const { error } = await supabaseAdmin.from('feedback_items').insert({
         content,
         contact,
-        createdAt: new Date().toISOString(),
+        source: 'site',
     });
-    writeFeedback(data);
+
+    if (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
 
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
 }

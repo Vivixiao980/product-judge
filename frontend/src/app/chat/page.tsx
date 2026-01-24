@@ -28,6 +28,7 @@ export default function ChatPage() {
                         messages={messages}
                         messagesEndRef={messagesEndRef}
                         isUserScrollingRef={isUserScrollingRef}
+                        currentStage={currentStage}
                     />
                     <ChatInput
                         input={input}
@@ -35,12 +36,14 @@ export default function ChatPage() {
                         isLoading={isLoading}
                         onSend={handleSend}
                         onQuickSend={handleQuickSend}
+                        summary={summary}
                     />
                 </div>
                 <Sidebar
                     stageConfig={stageConfig}
                     summary={summary}
                     isSummarizing={isSummarizing}
+                    currentStage={currentStage}
                 />
             </div>
         </div>

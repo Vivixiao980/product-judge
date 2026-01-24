@@ -10,7 +10,7 @@ interface CmsItem {
     source?: string;
     tags: string[];
     fullArticle?: string;
-    status: 'draft' | 'pending' | 'approved' | 'published';
+    status: 'draft' | 'pending' | 'published';
     createdAt: string;
     updatedAt: string;
 }
@@ -18,7 +18,6 @@ interface CmsItem {
 const STATUS_LABELS: Record<CmsItem['status'], string> = {
     draft: '草稿',
     pending: '待审核',
-    approved: '已确认',
     published: '已发布',
 };
 
@@ -157,7 +156,7 @@ export default function AdminPage() {
                     source: entry.source || '',
                     tags: Array.isArray(entry.tags) ? entry.tags : [],
                     fullArticle: entry.fullArticle || '',
-                    status: entry.status || 'pending',
+            status: entry.status === 'approved' ? 'pending' : (entry.status || 'pending'),
                 }),
             });
         }
@@ -269,7 +268,6 @@ export default function AdminPage() {
                         >
                             <option value="draft">草稿</option>
                             <option value="pending">待审核</option>
-                            <option value="approved">已确认</option>
                             <option value="published">已发布</option>
                         </select>
                         <button
@@ -314,7 +312,7 @@ export default function AdminPage() {
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                     <h2 className="text-lg font-semibold">卡片列表</h2>
                     <div className="flex gap-2">
-                        {['all', 'draft', 'pending', 'approved', 'published'].map(status => (
+                        {['all', 'draft', 'pending', 'published'].map(status => (
                             <button
                                 key={status}
                                 onClick={() => setFilter(status as any)}
@@ -353,24 +351,6 @@ export default function AdminPage() {
                                         <button
                                             type="button"
                                             className="border border-gray-200 rounded-full px-3 py-1"
-                                            onClick={() => publishItem(item.id, 'approved')}
-                                        >
-                                            确认
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="border border-gray-200 rounded-full px-3 py-1"
-                                            onClick={() => publishItem(item.id, 'published')}
-                                        >
-                                            发布
-                                        </button>
-                                    </>
-                                )}
-                                {item.status === 'approved' && (
-                                    <>
-                                        <button
-                                            type="button"
-                                            className="border border-gray-200 rounded-full px-3 py-1"
                                             onClick={() => publishItem(item.id, 'published')}
                                         >
                                             发布
@@ -378,13 +358,22 @@ export default function AdminPage() {
                                     </>
                                 )}
                                 {item.status === 'published' && (
-                                    <button
-                                        type="button"
-                                        className="border border-gray-200 rounded-full px-3 py-1"
-                                        onClick={() => publishItem(item.id, 'approved')}
-                                    >
-                                        撤回
-                                    </button>
+                                    <>
+                                        <button
+                                            type="button"
+                                            className="border border-gray-200 rounded-full px-3 py-1"
+                                            onClick={() => startEdit(item)}
+                                        >
+                                            编辑
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="border border-gray-200 rounded-full px-3 py-1"
+                                            onClick={() => publishItem(item.id, 'pending')}
+                                        >
+                                            撤回到待审核
+                                        </button>
+                                    </>
                                 )}
                                 <button
                                     type="button"

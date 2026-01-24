@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
-
-// 验证管理员密码
-function isAuthorized(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization');
-  const adminPassword = process.env.ADMIN_PASSWORD;
-
-  if (!adminPassword) {
-    // 开发环境允许访问
-    return process.env.NODE_ENV !== 'production';
-  }
-
-  return authHeader === `Bearer ${adminPassword}`;
-}
+import { requireAdmin } from './_lib';
 
 // GET: 获取统计数据和对话列表
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  const authed = await requireAdmin();
+  if (!authed) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -31,16 +20,50 @@ export async function GET(request: NextRequest) {
     switch (view) {
       case 'overview': {
         // 获取总体统计
-        const [eventsResult, conversationsResult, dailyResult] = await Promise.all([
+        const [
+          eventsResult,
+          conversationsResult,
+          dailyResult,
+          ipTotalResult,
+          ipDailyResult,
+          ipRetentionResult,
+          chatCompletionResult,
+          stageStatsResult,
+          feedbackStatsResult,
+          totalMessagesResult,
+          dailyConversationMetricsResult,
+          feedbackItemsResult,
+          messageFeedbackItemsResult,
+        ] = await Promise.all([
           supabaseAdmin.from('events').select('id', { count: 'exact', head: true }),
           supabaseAdmin.from('conversations').select('id', { count: 'exact', head: true }),
           supabaseAdmin.from('daily_stats').select('*').limit(7),
+          supabaseAdmin.from('total_unique_ips').select('*').single(),
+          supabaseAdmin.from('daily_ip_stats').select('*').limit(7),
+          supabaseAdmin.from('daily_ip_retention').select('*').limit(7),
+          supabaseAdmin.from('daily_chat_completion_ip').select('*').limit(7),
+          supabaseAdmin.from('stage_ip_stats').select('*'),
+          supabaseAdmin.from('message_feedback_stats').select('*').single(),
+          supabaseAdmin.from('total_conversation_messages').select('*').single(),
+          supabaseAdmin.from('daily_conversation_metrics').select('*').limit(7),
+          supabaseAdmin.from('feedback_items').select('*').order('created_at', { ascending: false }).limit(50),
+          supabaseAdmin.from('message_feedback_items').select('*').order('created_at', { ascending: false }).limit(50),
         ]);
 
         return NextResponse.json({
           totalEvents: eventsResult.count || 0,
           totalConversations: conversationsResult.count || 0,
           dailyStats: dailyResult.data || [],
+          totalUniqueIps: ipTotalResult.data?.total_unique_ips || 0,
+          dailyIpStats: ipDailyResult.data || [],
+          ipRetention: ipRetentionResult.data || [],
+          chatCompletion: chatCompletionResult.data || [],
+          stageStats: stageStatsResult.data || [],
+          feedbackStats: feedbackStatsResult.data || { likes: 0, dislikes: 0 },
+          totalConversationMessages: totalMessagesResult.data?.total_messages || 0,
+          dailyConversationMetrics: dailyConversationMetricsResult.data || [],
+          feedbackItems: feedbackItemsResult.data || [],
+          messageFeedbackItems: messageFeedbackItemsResult.data || [],
         });
       }
 

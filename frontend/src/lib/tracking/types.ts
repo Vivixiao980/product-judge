@@ -26,6 +26,7 @@ export const TRACK_EVENTS = {
   CHAT_START: 'chat_start',
   MESSAGE_SENT: 'message_sent',
   MESSAGE_RECEIVED: 'message_received',
+  MESSAGE_FEEDBACK: 'message_feedback',
 
   // 阶段切换
   STAGE_CHANGE: 'stage_change',

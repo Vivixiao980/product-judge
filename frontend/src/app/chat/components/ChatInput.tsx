@@ -1,6 +1,8 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { Send } from 'lucide-react';
+import { Summary } from '../types';
 
 interface ChatInputProps {
     input: string;
@@ -8,15 +10,24 @@ interface ChatInputProps {
     isLoading: boolean;
     onSend: () => void;
     onQuickSend: (content: string) => void;
+    summary?: Summary;
 }
 
 const quickActions = [
     { label: '直接给我结论', message: '直接给我结论与建议。' },
     { label: '给我验证方案', message: '给我一个可验证的最小实验方案。' },
-    { label: '跳到多视角分析', message: '跳到多视角分析。' },
 ];
 
-export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend }: ChatInputProps) {
+export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend, summary }: ChatInputProps) {
+    const router = useRouter();
+
+    const handleGoToAnalysis = () => {
+        if (summary) {
+            sessionStorage.setItem('analysis_summary', JSON.stringify(summary));
+        }
+        router.push('/analysis');
+    };
+
     return (
         <div className="p-4 bg-white border-t border-gray-100">
             <div className="relative flex items-center">
@@ -48,6 +59,13 @@ export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend }: C
                         {action.label}
                     </button>
                 ))}
+                <button
+                    onClick={handleGoToAnalysis}
+                    disabled={isLoading}
+                    className="text-xs px-3 py-1.5 rounded-full bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+                >
+                    跳到多视角分析
+                </button>
             </div>
             <p className="text-center text-xs text-gray-400 mt-2">
                 产品顾问会从多个视角帮你审视产品，放轻松聊就好 😊

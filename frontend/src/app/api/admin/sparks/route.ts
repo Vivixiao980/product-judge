@@ -1,23 +1,49 @@
-import { NextRequest } from 'next/server';
-import { ensurePublishedCards, readCms, requireAdmin, writeCms, writePublishedCards } from '../_lib';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '../_lib';
+import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import crypto from 'crypto';
+
+const normalizeStatus = (status: string) => (status === 'approved' ? 'pending' : status);
+
+const mapCmsItem = (row: any) => ({
+    id: row.id,
+    title: row.title,
+    category: row.category,
+    content: row.content,
+    source: row.source || '',
+    tags: row.tags || [],
+    fullArticle: row.full_article || '',
+    status: normalizeStatus(row.status),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+});
 
 export async function GET() {
     if (!(await requireAdmin())) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
-    ensurePublishedCards();
-    const data = readCms();
-    return new Response(JSON.stringify(data), { status: 200 });
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+        return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+    }
+    const { data, error } = await supabaseAdmin
+        .from('cms_items')
+        .select('*')
+        .order('created_at', { ascending: false });
+    if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    const items = (data || []).map(mapCmsItem);
+    return NextResponse.json({ items });
 }
 
 export async function POST(req: NextRequest) {
     if (!(await requireAdmin())) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+        return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+    }
     const payload = await req.json();
-    const now = new Date().toISOString();
-    const data = readCms();
     const item = {
         id: crypto.randomUUID(),
         title: payload.title || '未命名',
@@ -25,13 +51,18 @@ export async function POST(req: NextRequest) {
         content: payload.content || '',
         source: payload.source || '',
         tags: Array.isArray(payload.tags) ? payload.tags : [],
-        fullArticle: payload.fullArticle || '',
-        status: payload.status || 'pending',
-        createdAt: now,
-        updatedAt: now,
+        full_article: payload.fullArticle || '',
+        status: normalizeStatus(payload.status || 'pending'),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
     };
-    data.items.unshift(item);
-    writeCms(data);
-    writePublishedCards(data.items);
-    return new Response(JSON.stringify(item), { status: 200 });
+    const { data, error } = await supabaseAdmin
+        .from('cms_items')
+        .insert(item)
+        .select('*')
+        .single();
+    if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json(mapCmsItem(data));
 }

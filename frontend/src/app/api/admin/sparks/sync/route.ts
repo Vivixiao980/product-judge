@@ -1,9 +1,10 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { readCms, requireAdmin, writeCms, writePublishedCards } from '../../_lib';
+import { requireAdmin } from '../../_lib';
+import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
-const ROOT = '/Users/vivi/Documents/产品思考工具';
+const ROOT = process.cwd();
 const AUTO_CARDS = path.join(ROOT, 'frontend', 'src', 'data', 'cards.auto.json');
 const SOURCES = path.join(ROOT, 'backend', 'sparks_sources.json');
 const KB_DIR = path.join(ROOT, '产品知识库');
@@ -42,26 +43,38 @@ export async function POST() {
     if (!(await requireAdmin())) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+        return new Response(JSON.stringify({ error: 'Supabase not configured' }), { status: 503 });
+    }
+    if (process.env.VERCEL) {
+        return new Response(JSON.stringify({ error: 'Sync is only available in local dev' }), { status: 400 });
+    }
 
-    const data = readCms();
-    const existing = new Set(data.items.map(item => item.id));
+    const { data: existingRows, error: existingError } = await supabaseAdmin
+        .from('cms_items')
+        .select('id');
+    if (existingError) {
+        return new Response(JSON.stringify({ error: existingError.message }), { status: 500 });
+    }
+    const existing = new Set((existingRows || []).map(row => row.id));
     const now = new Date().toISOString();
+    const toInsert: any[] = [];
 
     if (fs.existsSync(AUTO_CARDS)) {
         const auto = JSON.parse(fs.readFileSync(AUTO_CARDS, 'utf-8') || '[]');
         for (const card of auto) {
             if (!card?.id || existing.has(card.id)) continue;
-            data.items.unshift({
+            toInsert.push({
                 id: card.id,
                 title: card.title || '未命名',
                 category: card.category || '其他',
                 content: card.content || '',
                 source: card.source || '',
                 tags: Array.isArray(card.tags) ? card.tags : [],
-                fullArticle: card.fullArticle || '',
+                full_article: card.fullArticle || '',
                 status: 'published',
-                createdAt: now,
-                updatedAt: now,
+                created_at: now,
+                updated_at: now,
             });
             existing.add(card.id);
         }
@@ -79,23 +92,28 @@ export async function POST() {
             const title = firstHeading(text) || path.basename(rel, path.extname(rel));
             const categoryKey = rel.split('/')[0];
             const category = CATEGORY_MAP[categoryKey] || '其他';
-            data.items.unshift({
+            toInsert.push({
                 id,
                 title,
                 category,
                 content: shortSummary(text),
                 source: '',
                 tags: [category],
-                fullArticle: text.slice(0, 4000),
+                full_article: text.slice(0, 4000),
                 status: 'pending',
-                createdAt: now,
-                updatedAt: now,
+                created_at: now,
+                updated_at: now,
             });
             existing.add(id);
         }
     }
 
-    writeCms(data);
-    writePublishedCards(data.items);
-    return new Response(JSON.stringify({ ok: true, count: data.items.length }), { status: 200 });
+    if (!toInsert.length) {
+        return new Response(JSON.stringify({ ok: true, inserted: 0 }), { status: 200 });
+    }
+    const { error } = await supabaseAdmin.from('cms_items').insert(toInsert);
+    if (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+    return new Response(JSON.stringify({ ok: true, inserted: toInsert.length }), { status: 200 });
 }
