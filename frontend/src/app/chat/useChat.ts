@@ -12,6 +12,39 @@ import {
     trackApiError,
 } from '@/lib/tracking';
 
+// 获取会话 ID
+const getSessionId = (): string => {
+    if (typeof window === 'undefined') return '';
+    let sessionId = sessionStorage.getItem('track_session_id');
+    if (!sessionId) {
+        sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+        sessionStorage.setItem('track_session_id', sessionId);
+    }
+    return sessionId;
+};
+
+// 保存对话到数据库
+const saveConversation = async (
+    messages: { role: string; content: string }[],
+    summary: Summary,
+    stage: Stage
+) => {
+    try {
+        await fetch('/api/conversation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: getSessionId(),
+                messages: messages.map(m => ({ role: m.role, content: m.content })),
+                summary,
+                stage,
+            }),
+        });
+    } catch (error) {
+        console.warn('[Conversation] Failed to save:', error);
+    }
+};
+
 const normalizeSummary = (value: unknown): Summary => {
     const coerceText = (input: unknown): string => {
         if (typeof input === 'string') return input;
@@ -163,7 +196,11 @@ export function useChat() {
 
             const data = await response.json();
             if (data?.summary) {
-                setSummary(normalizeSummary(data.summary));
+                const newSummary = normalizeSummary(data.summary);
+                setSummary(newSummary);
+                // 保存对话到数据库
+                const newStage = computeStage(newSummary);
+                void saveConversation(snapshot, newSummary, newStage);
             }
         } catch (error) {
             console.error('Error calling summary API:', error);
