@@ -8,17 +8,20 @@ from db import retrieve_knowledge
 
 load_dotenv()
 
-app = FastAPI(title="Product Spar API", description="Backend for the Product Coach AI")
+app = FastAPI(title="ProductThink API", description="Backend for the ProductThink AI Advisor")
 
 # CORS setup
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://frontend-silk-delta-34.vercel.app",
+    "https://*.vercel.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

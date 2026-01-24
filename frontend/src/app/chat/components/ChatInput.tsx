@@ -50,7 +50,7 @@ export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend }: C
                 ))}
             </div>
             <p className="text-center text-xs text-gray-400 mt-2">
-                产品判官会从多个视角帮你审视产品，放轻松聊就好 😊
+                产品顾问会从多个视角帮你审视产品，放轻松聊就好 😊
             </p>
         </div>
     );

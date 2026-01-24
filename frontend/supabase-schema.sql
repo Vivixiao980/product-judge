@@ -1,5 +1,5 @@
 -- =============================================
--- 产品判官 - Supabase 数据库初始化脚本
+-- ProductThink - Supabase 数据库初始化脚本
 -- =============================================
 -- 使用方法：
 -- 1. 登录 Supabase Dashboard (https://supabase.com/dashboard)

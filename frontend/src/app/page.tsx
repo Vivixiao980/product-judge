@@ -13,7 +13,7 @@ export default function Home() {
       </h1>
 
       <p className="text-xl text-gray-500 mb-12 max-w-2xl leading-relaxed">
-        用 AI 产品判官挑战你的想法，或从全球顶尖产品领袖的智慧中获取灵感。
+        用 AI 产品顾问挑战你的想法，或从全球顶尖产品领袖的智慧中获取灵感。
       </p>
 
       <div className="grid md:grid-cols-2 gap-4 w-full max-w-lg">

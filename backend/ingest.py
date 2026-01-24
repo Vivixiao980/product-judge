@@ -13,7 +13,7 @@ PDF_DIR = os.path.dirname(os.path.dirname(__file__))
 
 # 优先加载的精华文件（这些文件会被优先检索）
 PRIORITY_FILES = [
-    "product_judge_essentials.md",  # 产品判官专用精华
+    "product_judge_essentials.md",  # ProductThink 专用精华
     "lenny_podcast_essentials.md",  # Lenny播客精华
     "核心知识精华.md",
     "产品沉思录 · 核心知识精华.md",

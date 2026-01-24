@@ -30,7 +30,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 ) : (
                     <img
                         src="/bot-avatar.svg"
-                        alt="产品判官"
+                        alt="产品顾问"
                         className="w-5 h-5"
                     />
                 )}
