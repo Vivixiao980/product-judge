@@ -1,15 +1,43 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import cardsData from '@/data/cards.json';
-import cmsCardsData from '@/data/cards.cms.json';
 import InsightCard, { CardData } from '@/components/Cards/InsightCard';
+import { trackCardClick } from '@/lib/tracking';
 
 export default function ExplorePage() {
-    const combinedCards = useMemo(() => [...cmsCardsData, ...cardsData] as CardData[], []);
+    const [cmsCards, setCmsCards] = useState<CardData[]>([]);
+    const [cmsError, setCmsError] = useState('');
+
+    useEffect(() => {
+        let active = true;
+        const loadCmsCards = async () => {
+            try {
+                const res = await fetch('/api/cms/cards');
+                if (!res.ok) {
+                    throw new Error('加载 CMS 内容失败');
+                }
+                const data = await res.json();
+                if (active) {
+                    setCmsCards(Array.isArray(data.cards) ? data.cards : []);
+                }
+            } catch (error) {
+                if (active) {
+                    setCmsError(error instanceof Error ? error.message : '加载 CMS 内容失败');
+                }
+            }
+        };
+        loadCmsCards();
+        return () => {
+            active = false;
+        };
+    }, []);
+
+
+    const combinedCards = useMemo(() => [...cmsCards, ...cardsData] as CardData[], [cmsCards]);
     const categories = useMemo(() => {
         const unique = new Set(combinedCards.map(card => card.category).filter(Boolean));
         return ['全部', ...Array.from(unique)];
@@ -30,6 +58,9 @@ export default function ExplorePage() {
                 <p className="text-gray-500 max-w-xl mx-auto">
                     来自全球顶尖产品领袖的核心洞察与心智模型
                 </p>
+                {cmsError ? (
+                    <p className="text-xs text-red-500 mt-2">{cmsError}</p>
+                ) : null}
             </header>
 
             <div className="flex flex-wrap justify-center gap-2 mb-8">
@@ -50,9 +81,25 @@ export default function ExplorePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCards.map((card) => (
-                    <InsightCard key={card.id} card={card} onClick={setActiveCard} />
+                    <InsightCard
+                        key={card.id}
+                        card={card}
+                        onClick={(selected) => {
+                            trackCardClick(selected.id, selected.title);
+                            setActiveCard(selected);
+                        }}
+                    />
                 ))}
             </div>
+
+            <footer className="mt-12 pt-8 border-t border-gray-200 text-center text-sm text-gray-500 space-y-3">
+                <p>
+                    📚 这里的内容来自互联网收集。如果你有好的产品文章或想法，欢迎点击右上方反馈投稿给 vivi 💌
+                </p>
+                <p>
+                    ✨ 每一篇都是 vivi 亲自挑选的产品思维精华，会不定期更新，欢迎常来看看！
+                </p>
+            </footer>
 
             {activeCard ? (
                 <div

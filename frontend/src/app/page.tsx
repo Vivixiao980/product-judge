@@ -21,7 +21,7 @@ export default function Home() {
           href="/chat"
           className="group relative flex flex-col items-start p-6 rounded-2xl border border-gray-200 hover:border-black transition-all hover:shadow-lg bg-white"
         >
-          <div className="mb-4 bg-black text-white p-2.5 rounded-lg">
+          <div className="mb-4 bg-white text-black border border-black p-2.5 rounded-lg">
             <MessageSquare size={20} />
           </div>
           <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center w-full justify-between">
@@ -35,17 +35,17 @@ export default function Home() {
 
         <Link
           href="/explore"
-          className="group relative flex flex-col items-start p-6 rounded-2xl border border-gray-200 hover:border-blue-600 transition-all hover:shadow-lg bg-white"
+          className="group relative flex flex-col items-start p-6 rounded-2xl border border-gray-200 hover:border-black transition-all hover:shadow-lg bg-white"
         >
-          <div className="mb-4 bg-blue-50 text-blue-600 p-2.5 rounded-lg">
+          <div className="mb-4 bg-gray-100 text-black p-2.5 rounded-lg">
             <Sparkles size={20} />
           </div>
-          <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center w-full justify-between group-hover:text-blue-600 transition-colors">
+          <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center w-full justify-between transition-colors">
             灵感火花
             <ArrowRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0" />
           </h3>
           <p className="text-sm text-gray-500 text-left">
-            来自 Lenny&apos;s Podcast 的精华心智模型
+            发现改变世界的产品思维
           </p>
         </Link>
       </div>
