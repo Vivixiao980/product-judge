@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { ExpertAnalysis } from '../types';
 import { getExpertById } from '@/data/experts';
@@ -29,6 +30,10 @@ export function ExpertChat({ analysis }: ExpertChatProps) {
     completed: <CheckCircle size={20} className="text-green-500" />,
     error: <AlertCircle size={20} className="text-red-500" />,
   };
+
+  const displayText = analysis.analysis
+    ? analysis.analysis.replace(/```json[\s\S]*?```/g, '').trim()
+    : '';
 
   return (
     <div className={`bg-white rounded-2xl shadow-sm overflow-hidden transition-all ${
@@ -72,9 +77,30 @@ export function ExpertChat({ analysis }: ExpertChatProps) {
         )}
 
         {(analysis.status === 'analyzing' || analysis.status === 'completed') && (
-          <div className="prose prose-sm max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {analysis.analysis || '正在思考中...'}
+          <div className="prose prose-sm max-w-none prose-pre:whitespace-pre-wrap prose-pre:break-words">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkBreaks]}
+              components={{
+                pre: ({ children }) => (
+                  <pre className="whitespace-pre-wrap break-words overflow-x-auto bg-black/5 p-3 rounded">
+                    {children}
+                  </pre>
+                ),
+                code: ({ children, className }) => {
+                  const isBlock = className?.includes('language-');
+                  return isBlock ? (
+                    <code className="font-mono text-[0.85em] whitespace-pre-wrap break-words">
+                      {children}
+                    </code>
+                  ) : (
+                    <code className="px-1 py-0.5 rounded bg-black/5 font-mono text-[0.85em]">
+                      {children}
+                    </code>
+                  );
+                },
+              }}
+            >
+              {displayText || '正在思考中...'}
             </ReactMarkdown>
           </div>
         )}

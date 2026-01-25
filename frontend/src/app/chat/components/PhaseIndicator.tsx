@@ -8,9 +8,9 @@ interface PhaseIndicatorProps {
 }
 
 const phases: { key: Stage; label: string }[] = [
-    { key: 'info', label: '信息收集' },
-    { key: 'deep', label: '深度追问' },
-    { key: 'analysis', label: '多视角分析' },
+    { key: 'info', label: 'Step 1 信息收集' },
+    { key: 'deep', label: 'Step 2 深度追问' },
+    { key: 'analysis', label: 'Step 3 多视角分析' },
 ];
 
 export function PhaseIndicator({ currentStage }: PhaseIndicatorProps) {

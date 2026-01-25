@@ -50,6 +50,7 @@ export interface AnalysisState {
   productType: string;
   userGoal: UserGoal;
   selectedExperts: string[];
+  targetUserDescription?: string;
   analyses: ExpertAnalysis[];
   overallScore: number;
   isLoading: boolean;

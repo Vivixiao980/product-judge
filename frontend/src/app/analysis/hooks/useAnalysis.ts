@@ -62,7 +62,7 @@ export function useAnalysis(summary: Summary) {
   const [state, setState] = useState<AnalysisState>(initialState);
 
   const startAnalysis = useCallback(
-    async (selectedExperts: string[], productType: string, userGoal: UserGoal) => {
+    async (selectedExperts: string[], productType: string, userGoal: UserGoal, targetUserDescription?: string) => {
       // 初始化分析状态
       const initialAnalyses: ExpertAnalysis[] = selectedExperts.map((expertId) => {
         const expert = getExpertById(expertId);
@@ -85,6 +85,7 @@ export function useAnalysis(summary: Summary) {
         productType,
         userGoal,
         selectedExperts,
+        targetUserDescription,
         analyses: initialAnalyses,
         isLoading: true,
         error: null,
@@ -111,7 +112,7 @@ export function useAnalysis(summary: Summary) {
               expertId,
               productType,
               userGoal,
-              targetUserDescription: summary.product,
+              targetUserDescription: targetUserDescription || summary.product,
             }),
           });
 

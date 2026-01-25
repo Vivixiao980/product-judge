@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Send } from 'lucide-react';
-import { Summary } from '../types';
+import { Summary, Stage } from '../types';
 
 interface ChatInputProps {
     input: string;
@@ -11,6 +11,7 @@ interface ChatInputProps {
     onSend: () => void;
     onQuickSend: (content: string) => void;
     summary?: Summary;
+    currentStage?: Stage;
 }
 
 const quickActions = [
@@ -18,7 +19,7 @@ const quickActions = [
     { label: '给我验证方案', message: '给我一个可验证的最小实验方案。' },
 ];
 
-export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend, summary }: ChatInputProps) {
+export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend, summary, currentStage }: ChatInputProps) {
     const router = useRouter();
 
     const handleGoToAnalysis = () => {
@@ -30,6 +31,11 @@ export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend, sum
 
     return (
         <div className="p-4 bg-white border-t border-gray-100">
+            <div className="text-xs text-gray-500 mb-2">
+                {currentStage === 'info' && 'Step 1：先帮我把产品轮廓讲清楚～'}
+                {currentStage === 'deep' && 'Step 2：我会追问关键假设，一起把问题想清楚'}
+                {currentStage === 'analysis' && 'Step 3 就绪啦：随时可以进入多视角分析'}
+            </div>
             <div className="relative flex items-center">
                 <input
                     type="text"
@@ -62,7 +68,7 @@ export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend, sum
                 <button
                     onClick={handleGoToAnalysis}
                     disabled={isLoading}
-                    className="text-xs px-3 py-1.5 rounded-full bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    className="text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
                 >
                     跳到多视角分析
                 </button>

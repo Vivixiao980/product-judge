@@ -60,9 +60,12 @@ export function Sidebar({ stageConfig, summary, isSummarizing, currentStage }: S
                             : "border-gray-100 bg-white hover:border-gray-300"
                     )}
                 >
+                    <div className="text-xs text-gray-400 mb-2">
+                        {currentStage === 'info' ? 'Step 1 完成后自动进入 Step 2' : 'Step 2 进行中'}
+                    </div>
                     <div className="flex items-center gap-3 mb-2">
                         <Users size={20} />
-                        <span className="font-semibold">多视角分析</span>
+                        <span className="font-semibold">Step 3 多视角分析</span>
                     </div>
                     <p className={clsx(
                         "text-xs",

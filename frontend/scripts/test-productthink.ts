@@ -71,12 +71,13 @@ const USER_GOAL_LABELS: Record<UserGoal, string> = {
   scale: '规模化增长',
 };
 
-// 要测试的专家列表 - 产品专家 + 目标用户
+// 要测试的专家列表 - 产品专家 + 设计专家 + 目标用户
 const expertsToTest = [
   'liang_ning',    // 梁宁 - 产品战略
   'yu_jun',        // 俞军 - 产品方法论
   'lenny',         // Lenny - 增长
   'paul_graham',   // PG - 投资视角
+  'kenya_hara',    // 原研哉 - 设计
   'target_user',   // 目标用户
 ];
 
@@ -104,6 +105,7 @@ async function testExpertAnalysis(
     shen_nanpeng: '沈南鹏',
     zhang_yiming: '张一鸣',
     tech_architect: '技术架构师',
+    kenya_hara: '原研哉',
     target_user: '目标用户',
   };
 

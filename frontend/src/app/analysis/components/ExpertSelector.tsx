@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { EXPERTS, getRecommendedExperts, EXPERT_CATEGORIES } from '@/data/experts';
 import { ExpertCard } from './ExpertCard';
@@ -9,7 +9,18 @@ import { Summary } from '@/app/chat/types';
 
 interface ExpertSelectorProps {
   summary: Summary;
-  onStartAnalysis: (selectedExperts: string[], productType: string, userGoal: UserGoal) => void;
+  onStartAnalysis: (selectedExperts: string[], productType: string, userGoal: UserGoal, targetUserDescription?: string) => void;
+}
+
+interface TargetUserPersona {
+  id: string;
+  name: string;
+  role: string;
+  scenario: string;
+  painPoints: string[];
+  motivations: string[];
+  willingnessToPay: string;
+  shortBio: string;
 }
 
 export function ExpertSelector({ summary, onStartAnalysis }: ExpertSelectorProps) {
@@ -20,6 +31,10 @@ export function ExpertSelector({ summary, onStartAnalysis }: ExpertSelectorProps
     return recommended.slice(0, 3);
   });
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [personas, setPersonas] = useState<TargetUserPersona[]>([]);
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>('');
+  const [personaLoading, setPersonaLoading] = useState(false);
+  const [personaError, setPersonaError] = useState('');
 
   const recommendedExperts = getRecommendedExperts(productType);
 
@@ -40,8 +55,40 @@ export function ExpertSelector({ summary, onStartAnalysis }: ExpertSelectorProps
 
   const handleStart = () => {
     if (selectedExperts.length === 0) return;
-    onStartAnalysis(selectedExperts, productType, userGoal);
+    const selectedPersona = personas.find(p => p.id === selectedPersonaId);
+    onStartAnalysis(selectedExperts, productType, userGoal, selectedPersona?.shortBio || selectedPersona?.scenario);
   };
+
+  const loadPersonas = async () => {
+    setPersonaError('');
+    setPersonaLoading(true);
+    try {
+      const res = await fetch('/api/analysis/target-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summary, productType }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || '生成失败');
+      }
+      const data = await res.json();
+      const list = Array.isArray(data.personas) ? data.personas : [];
+      setPersonas(list);
+      if (list.length > 0) {
+        setSelectedPersonaId(list[0].id);
+      }
+    } catch (error) {
+      setPersonaError(error instanceof Error ? error.message : '生成失败');
+    } finally {
+      setPersonaLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!summary?.product) return;
+    void loadPersonas();
+  }, [summary, productType]);
 
   // 按类别分组专家
   const expertsByCategory = EXPERT_CATEGORIES.map((category) => ({
@@ -147,6 +194,50 @@ export function ExpertSelector({ summary, onStartAnalysis }: ExpertSelectorProps
             </div>
           </div>
         ))}
+      </div>
+
+      {/* 目标用户画像 */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-lg font-bold">目标用户画像</h2>
+            <p className="text-sm text-gray-500 mt-1">先生成画像，再选择你认为最贴近的用户</p>
+          </div>
+          <button
+            type="button"
+            onClick={loadPersonas}
+            className="text-sm px-3 py-1.5 rounded-full border border-gray-200 hover:border-gray-400"
+            disabled={personaLoading}
+          >
+            {personaLoading ? '生成中…' : '重新生成'}
+          </button>
+        </div>
+
+        {personaError ? (
+          <p className="text-sm text-red-500 mb-3">{personaError}</p>
+        ) : null}
+
+        {personaLoading && personas.length === 0 ? (
+          <div className="text-sm text-gray-400">正在生成画像…</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {personas.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setSelectedPersonaId(p.id)}
+                className={`text-left rounded-xl border p-4 transition ${
+                  selectedPersonaId === p.id ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="font-medium text-gray-900">{p.name} · {p.role}</div>
+                <p className="text-xs text-gray-500 mt-1">{p.shortBio}</p>
+                <p className="text-xs text-gray-500 mt-2">场景：{p.scenario}</p>
+                <p className="text-xs text-gray-500 mt-2">付费意愿：{p.willingnessToPay}</p>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 开始分析按钮 */}
