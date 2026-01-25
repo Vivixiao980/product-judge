@@ -4,6 +4,7 @@
  * 使用本产品（ProductThink）作为测试案例
  * 测试所有专家视角的分析结果
  */
+export {};
 
 const API_BASE = process.env.API_BASE || 'http://localhost:3000';
 

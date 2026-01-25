@@ -5,6 +5,7 @@
  * - 根据用户上传的简历和公司JD快速进入模拟面试
  * - 调用摄像头记录并评分
  */
+export {};
 
 const API_BASE = process.env.API_BASE || 'http://localhost:3000';
 
