@@ -1,6 +1,6 @@
 'use client';
 
-import { ThumbsUp, ThumbsDown, Copy, User } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Copy, Check, User } from 'lucide-react';
 import clsx from 'clsx';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -19,6 +19,7 @@ export function ChatMessage({ message, currentStage }: ChatMessageProps) {
     const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
     const [comment, setComment] = useState('');
     const [showCommentBox, setShowCommentBox] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     const sendFeedback = (vote: 'up' | 'down') => {
         if (feedback === vote) return;
@@ -42,6 +43,8 @@ export function ChatMessage({ message, currentStage }: ChatMessageProps) {
     const copyMessage = async () => {
         try {
             await navigator.clipboard.writeText(message.content);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1200);
         } catch {
             // fallback: silently ignore
         }
@@ -149,14 +152,14 @@ export function ChatMessage({ message, currentStage }: ChatMessageProps) {
                             >
                                 <ThumbsDown size={12} />
                             </button>
-                            <button
-                                type="button"
-                                title="复制"
-                                className="rounded-full border border-gray-200 p-1 transition hover:border-gray-300 hover:text-gray-600"
-                                onClick={copyMessage}
-                            >
-                                <Copy size={12} />
-                            </button>
+                        <button
+                            type="button"
+                            title="复制"
+                            className="rounded-full border border-gray-200 p-1 transition hover:border-gray-300 hover:text-gray-600"
+                            onClick={copyMessage}
+                        >
+                            {copied ? <Check size={12} /> : <Copy size={12} />}
+                        </button>
                             {feedback ? (
                                 <button
                                     type="button"

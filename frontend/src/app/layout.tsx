@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Layout/Navbar";
 import PageViewTracker from "@/components/Tracking/PageViewTracker";
+import FeedbackDrawer from "@/components/Feedback/FeedbackDrawer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,6 +35,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <PageViewTracker />
         </Suspense>
+        <FeedbackDrawer />
         <main className="flex-1 flex flex-col">
           {children}
         </main>

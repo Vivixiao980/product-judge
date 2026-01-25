@@ -41,6 +41,10 @@ export default function AdminPage() {
     const [bulkJson, setBulkJson] = useState('');
     const [syncing, setSyncing] = useState(false);
     const [syncError, setSyncError] = useState('');
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState('');
+    const [lastImageUrl, setLastImageUrl] = useState('');
+    const [activeAction, setActiveAction] = useState<{ id: string; type: 'edit' | 'publish' | 'retract' } | null>(null);
 
     const fetchItems = async () => {
         const res = await fetch('/api/admin/sparks');
@@ -106,12 +110,15 @@ export default function AdminPage() {
     };
 
     const publishItem = async (id: string, status: CmsItem['status']) => {
+        const type = status === 'published' ? 'publish' : 'retract';
+        setActiveAction({ id, type });
         await fetch('/api/admin/sparks/publish', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, status }),
         });
         await fetchItems();
+        setActiveAction(null);
     };
 
     const deleteItem = async (id: string) => {
@@ -121,6 +128,7 @@ export default function AdminPage() {
     };
 
     const startEdit = (item: CmsItem) => {
+        setActiveAction({ id: item.id, type: 'edit' });
         setEditingId(item.id);
         setForm({
             title: item.title,
@@ -131,6 +139,9 @@ export default function AdminPage() {
             fullArticle: item.fullArticle || '',
             status: item.status,
         });
+        setTimeout(() => {
+            setActiveAction(prev => (prev?.id === item.id && prev.type === 'edit' ? null : prev));
+        }, 600);
     };
 
     const handleBulkImport = async () => {
@@ -178,6 +189,37 @@ export default function AdminPage() {
             setSyncError(error instanceof Error ? error.message : '同步失败');
         } finally {
             setSyncing(false);
+        }
+    };
+
+    const handleImageUpload = async (file: File) => {
+        setUploadError('');
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch('/api/admin/upload-image', {
+                method: 'POST',
+                body: formData,
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data?.error || '上传失败');
+            }
+            const data = await res.json();
+            const url = data.url as string;
+            if (url) {
+                const markdown = `![image](${url})`;
+                setForm(prev => ({
+                    ...prev,
+                    fullArticle: prev.fullArticle ? `${prev.fullArticle}\n\n${markdown}` : markdown,
+                }));
+                setLastImageUrl(url);
+            }
+        } catch (error) {
+            setUploadError(error instanceof Error ? error.message : '上传失败');
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -261,6 +303,28 @@ export default function AdminPage() {
                             value={form.fullArticle}
                             onChange={event => setForm({ ...form, fullArticle: event.target.value })}
                         />
+                        <div className="border rounded-lg px-3 py-3">
+                            <div className="text-sm text-gray-600 mb-2">上传图片（将插入到全文）</div>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                disabled={uploading}
+                                onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    if (file) void handleImageUpload(file);
+                                    event.currentTarget.value = '';
+                                }}
+                            />
+                            {uploading ? (
+                                <p className="text-xs text-gray-500 mt-2">上传中…</p>
+                            ) : null}
+                            {uploadError ? (
+                                <p className="text-xs text-red-500 mt-2">{uploadError}</p>
+                            ) : null}
+                            {lastImageUrl ? (
+                                <p className="text-xs text-gray-500 mt-2">已插入图片链接</p>
+                            ) : null}
+                        </div>
                         <select
                             className="border rounded-lg px-3 py-2"
                             value={form.status}
@@ -343,15 +407,24 @@ export default function AdminPage() {
                                     <>
                                         <button
                                             type="button"
-                                            className="border border-gray-200 rounded-full px-3 py-1"
+                                            className={`border border-gray-200 rounded-full px-3 py-1 transition ${
+                                                activeAction?.id === item.id && activeAction.type === 'edit'
+                                                    ? 'ring-2 ring-gray-400 bg-gray-100'
+                                                    : 'hover:border-gray-400'
+                                            }`}
                                             onClick={() => startEdit(item)}
                                         >
                                             编辑
                                         </button>
                                         <button
                                             type="button"
-                                            className="border border-gray-200 rounded-full px-3 py-1"
+                                            className={`border border-gray-200 rounded-full px-3 py-1 transition ${
+                                                activeAction?.id === item.id && activeAction.type === 'publish'
+                                                    ? 'ring-2 ring-green-400 bg-green-50'
+                                                    : 'hover:border-gray-400'
+                                            }`}
                                             onClick={() => publishItem(item.id, 'published')}
+                                            disabled={activeAction?.id === item.id && activeAction.type === 'publish'}
                                         >
                                             发布
                                         </button>
@@ -361,15 +434,24 @@ export default function AdminPage() {
                                     <>
                                         <button
                                             type="button"
-                                            className="border border-gray-200 rounded-full px-3 py-1"
+                                            className={`border border-gray-200 rounded-full px-3 py-1 transition ${
+                                                activeAction?.id === item.id && activeAction.type === 'edit'
+                                                    ? 'ring-2 ring-gray-400 bg-gray-100'
+                                                    : 'hover:border-gray-400'
+                                            }`}
                                             onClick={() => startEdit(item)}
                                         >
                                             编辑
                                         </button>
                                         <button
                                             type="button"
-                                            className="border border-gray-200 rounded-full px-3 py-1"
+                                            className={`border border-gray-200 rounded-full px-3 py-1 transition ${
+                                                activeAction?.id === item.id && activeAction.type === 'retract'
+                                                    ? 'ring-2 ring-amber-400 bg-amber-50'
+                                                    : 'hover:border-gray-400'
+                                            }`}
                                             onClick={() => publishItem(item.id, 'pending')}
+                                            disabled={activeAction?.id === item.id && activeAction.type === 'retract'}
                                         >
                                             撤回到待审核
                                         </button>

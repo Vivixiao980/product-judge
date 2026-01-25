@@ -13,10 +13,6 @@ export default function Navbar() {
         { name: '探索', href: '/explore', icon: Library },
     ];
 
-    const sideItems = [
-        { name: '反馈', href: '/feedback', icon: Sparkles },
-    ];
-
     return (
         <nav className="border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-50">
             <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -54,29 +50,7 @@ export default function Navbar() {
                     })}
                 </div>
 
-                {/* Side actions */}
-                <div className="flex items-center gap-2">
-                    {sideItems.map((item) => {
-                        const isActive = pathname.startsWith(item.href);
-                        const Icon = item.icon;
-
-                        return (
-                            <Link
-                                key={item.name}
-                                href={item.href}
-                                className={clsx(
-                                    "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200",
-                                    isActive
-                                        ? "bg-black text-white border-black"
-                                        : "text-gray-600 border-gray-200 hover:text-gray-900 hover:border-gray-400"
-                                )}
-                            >
-                                <Icon size={16} />
-                                {item.name}
-                            </Link>
-                        );
-                    })}
-                </div>
+                <div className="w-8" />
             </div>
         </nav>
     );
