@@ -24,6 +24,11 @@ const STAGES: { key: Stage; label: string; description: string }[] = [
 export function Sidebar({ stageConfig, summary, isSummarizing, currentStage, canStartAnalysis, deepTurns, minDeepTurns }: SidebarProps) {
     const router = useRouter();
 
+    // 防止 stageConfig 未定义时报错
+    if (!stageConfig) {
+        return null;
+    }
+
     const handleStartAnalysis = () => {
         sessionStorage.setItem('analysis_summary', JSON.stringify(summary));
         router.push('/analysis');

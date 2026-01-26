@@ -1,58 +1,56 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { requireAdmin } from '../_lib';
+import { getActiveProviders } from '@/lib/ai-client';
 
 export async function GET() {
   // 验证管理员身份
-  const cookieStore = await cookies();
-  const token = cookieStore.get('admin_token')?.value;
-  if (token !== process.env.ADMIN_PASSWORD) {
+  const isAdmin = await requireAdmin();
+  if (!isAdmin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
+  const activeProviders = getActiveProviders();
+  const primaryProvider = activeProviders[0] || 'None';
+
+  // VectorEngine 用量信息（如果配置了）
+  let vectorEngineInfo = null;
+  if (process.env.VECTORENGINE_API_KEY) {
+    vectorEngineInfo = {
+      configured: true,
+      label: 'VectorEngine',
+      model: 'Claude 3.5 Sonnet',
+    };
   }
 
-  try {
-    // 获取 OpenRouter API key 信息
-    const keyInfoRes = await fetch('https://openrouter.ai/api/v1/auth/key', {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-      },
-    });
-
-    if (!keyInfoRes.ok) {
-      throw new Error('Failed to fetch key info');
-    }
-
-    const keyInfo = await keyInfoRes.json();
-
-    // 获取最近的使用记录（如果有的话）
-    let recentActivity = null;
+  // OpenRouter 用量信息
+  let openRouterInfo = null;
+  const openRouterKey = process.env.OPENROUTER_API_KEY;
+  if (openRouterKey) {
     try {
-      const activityRes = await fetch('https://openrouter.ai/api/v1/activity', {
+      const keyInfoRes = await fetch('https://openrouter.ai/api/v1/auth/key', {
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${openRouterKey}`,
         },
       });
-      if (activityRes.ok) {
-        recentActivity = await activityRes.json();
-      }
-    } catch {
-      // 活动记录可能不可用，忽略错误
-    }
 
-    return NextResponse.json({
-      keyInfo: keyInfo.data || keyInfo,
-      recentActivity,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error('Usage API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch usage data' },
-      { status: 500 }
-    );
+      if (keyInfoRes.ok) {
+        const keyInfo = await keyInfoRes.json();
+        openRouterInfo = {
+          configured: true,
+          ...(keyInfo.data || keyInfo),
+        };
+      }
+    } catch (error) {
+      console.error('Failed to fetch OpenRouter info:', error);
+      openRouterInfo = { configured: true, error: 'Failed to fetch usage' };
+    }
   }
+
+  return NextResponse.json({
+    primaryProvider,
+    activeProviders,
+    vectorEngine: vectorEngineInfo,
+    openRouter: openRouterInfo,
+    timestamp: new Date().toISOString(),
+  });
 }

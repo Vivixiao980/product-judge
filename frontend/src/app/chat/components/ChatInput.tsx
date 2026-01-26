@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Send } from 'lucide-react';
 import { Summary, Stage } from '../types';
@@ -22,6 +23,7 @@ const quickActions = [
 
 export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend, summary, currentStage, canStartAnalysis }: ChatInputProps) {
     const router = useRouter();
+    const [isComposing, setIsComposing] = useState(false);
 
     const handleGoToAnalysis = () => {
         if (summary) {
@@ -44,7 +46,15 @@ export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend, sum
                     placeholder="输入你的回答..."
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && onSend()}
+                    onKeyDown={(e) => {
+                        if (e.key !== 'Enter') return;
+                        if (isComposing || (e.nativeEvent as any)?.isComposing || (e.nativeEvent as any)?.keyCode === 229) {
+                            return;
+                        }
+                        onSend();
+                    }}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
                     disabled={isLoading}
                 />
                 <button

@@ -16,21 +16,6 @@ interface CmsItem {
     updatedAt: string;
 }
 
-interface UsageData {
-    keyInfo: {
-        label?: string;
-        usage?: number;
-        limit?: number;
-        is_free_tier?: boolean;
-        rate_limit?: {
-            requests: number;
-            interval: string;
-        };
-    };
-    recentActivity?: unknown;
-    timestamp: string;
-}
-
 const STATUS_LABELS: Record<CmsItem['status'], string> = {
     pending: '待发布',
     published: '已发布',
@@ -62,29 +47,8 @@ export default function AdminPage() {
     const [insertMode, setInsertMode] = useState<'cursor' | 'append'>('cursor');
     const fullArticleRef = useRef<HTMLTextAreaElement | null>(null);
     const [activeAction, setActiveAction] = useState<{ id: string; type: 'edit' | 'publish' | 'retract' } | null>(null);
-    const [usageData, setUsageData] = useState<UsageData | null>(null);
-    const [usageLoading, setUsageLoading] = useState(false);
-    const [usageError, setUsageError] = useState('');
     const [fullscreenEdit, setFullscreenEdit] = useState(false);
-
-    const fetchUsage = async () => {
-        setUsageLoading(true);
-        setUsageError('');
-        try {
-            const res = await fetch('/api/admin/usage');
-            if (res.ok) {
-                const data = await res.json();
-                setUsageData(data);
-            } else {
-                const err = await res.json().catch(() => ({}));
-                setUsageError(err.error || '获取用量失败');
-            }
-        } catch {
-            setUsageError('获取用量失败');
-        } finally {
-            setUsageLoading(false);
-        }
-    };
+    const [editModalOpen, setEditModalOpen] = useState(false);
 
     const fetchItems = async () => {
         const res = await fetch('/api/admin/sparks');
@@ -100,13 +64,6 @@ export default function AdminPage() {
     useEffect(() => {
         void fetchItems();
     }, []);
-
-    // 登录后获取用量数据
-    useEffect(() => {
-        if (authed) {
-            void fetchUsage();
-        }
-    }, [authed]);
 
     const filteredItems = useMemo(() => {
         if (filter === 'all') return items;
@@ -154,6 +111,7 @@ export default function AdminPage() {
         }
         setForm(EMPTY_FORM);
         setEditingId(null);
+        setEditModalOpen(false);
         await fetchItems();
     };
 
@@ -176,7 +134,6 @@ export default function AdminPage() {
     };
 
     const startEdit = (item: CmsItem) => {
-        setActiveAction({ id: item.id, type: 'edit' });
         setEditingId(item.id);
         setForm({
             title: item.title,
@@ -187,9 +144,19 @@ export default function AdminPage() {
             fullArticle: item.fullArticle || '',
             status: item.status,
         });
-        setTimeout(() => {
-            setActiveAction(prev => (prev?.id === item.id && prev.type === 'edit' ? null : prev));
-        }, 600);
+        setEditModalOpen(true);
+    };
+
+    const openNewCard = () => {
+        setEditingId(null);
+        setForm(EMPTY_FORM);
+        setEditModalOpen(true);
+    };
+
+    const closeEditModal = () => {
+        setEditModalOpen(false);
+        setEditingId(null);
+        setForm(EMPTY_FORM);
     };
 
     const handleBulkImport = async () => {
@@ -238,27 +205,6 @@ export default function AdminPage() {
         } finally {
             setSyncing(false);
         }
-    };
-
-    // 批量修改分类
-    const bulkUpdateCategory = async (oldCategory: string, newCategory: string) => {
-        const toUpdate = items.filter(item => item.category === oldCategory);
-        if (toUpdate.length === 0) {
-            alert(`没有找到分类为"${oldCategory}"的卡片`);
-            return;
-        }
-        if (!confirm(`确定将 ${toUpdate.length} 张"${oldCategory}"卡片的分类改为"${newCategory}"吗？`)) {
-            return;
-        }
-        for (const item of toUpdate) {
-            await fetch(`/api/admin/sparks/${item.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...item, category: newCategory }),
-            });
-        }
-        await fetchItems();
-        alert(`已更新 ${toUpdate.length} 张卡片`);
     };
 
     const insertIntoFullArticle = (text: string) => {
@@ -350,218 +296,18 @@ export default function AdminPage() {
                 </button>
             </header>
 
-            {/* AI API 用量监控 */}
-            <section className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 rounded-2xl p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                        </div>
-                        <h2 className="text-lg font-semibold text-gray-900">AI API 用量</h2>
-                    </div>
-                    <button
-                        onClick={fetchUsage}
-                        disabled={usageLoading}
-                        className="text-sm text-purple-600 hover:text-purple-800 disabled:opacity-50"
-                    >
-                        {usageLoading ? '刷新中...' : '刷新'}
-                    </button>
-                </div>
-
-                {usageError && (
-                    <div className="text-sm text-red-500 mb-4">{usageError}</div>
-                )}
-
-                {usageData ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-white rounded-xl p-4 border border-purple-100">
-                            <div className="text-xs text-gray-500 mb-1">服务商</div>
-                            <div className="text-sm font-semibold text-gray-900">OpenRouter</div>
-                            <div className="text-xs text-gray-400 mt-1">Claude 3.5 Sonnet</div>
-                        </div>
-                        <div className="bg-white rounded-xl p-4 border border-purple-100">
-                            <div className="text-xs text-gray-500 mb-1">API Key</div>
-                            <div className="text-sm font-semibold text-gray-900">
-                                {usageData.keyInfo.label || '默认'}
-                            </div>
-                            <div className="text-xs text-gray-400 mt-1">
-                                {usageData.keyInfo.is_free_tier ? '免费版' : '付费版'}
-                            </div>
-                        </div>
-                        <div className="bg-white rounded-xl p-4 border border-purple-100">
-                            <div className="text-xs text-gray-500 mb-1">已用额度</div>
-                            <div className="text-sm font-semibold text-gray-900">
-                                ${(usageData.keyInfo.usage || 0).toFixed(4)}
-                            </div>
-                            {usageData.keyInfo.limit && usageData.keyInfo.limit > 0 && (
-                                <div className="mt-2">
-                                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-purple-500 rounded-full"
-                                            style={{
-                                                width: `${Math.min(100, ((usageData.keyInfo.usage || 0) / usageData.keyInfo.limit) * 100)}%`
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="text-xs text-gray-400 mt-1">
-                                        限额 ${usageData.keyInfo.limit}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <div className="bg-white rounded-xl p-4 border border-purple-100">
-                            <div className="text-xs text-gray-500 mb-1">速率限制</div>
-                            <div className="text-sm font-semibold text-gray-900">
-                                {usageData.keyInfo.rate_limit?.requests || '-'} 次
-                            </div>
-                            <div className="text-xs text-gray-400 mt-1">
-                                / {usageData.keyInfo.rate_limit?.interval || '-'}
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="text-sm text-gray-500">
-                        {usageLoading ? '加载中...' : '点击刷新获取用量数据'}
-                    </div>
-                )}
-
-                {usageData && (
-                    <div className="mt-4 text-xs text-gray-400">
-                        更新时间: {new Date(usageData.timestamp).toLocaleString('zh-CN')}
-                    </div>
-                )}
-            </section>
-
             <section className="grid lg:grid-cols-[1fr_320px] gap-6 mb-10">
                 <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                    <h2 className="text-lg font-semibold mb-4">新建 / 编辑卡片</h2>
-                    <div className="grid gap-3">
-                        <input
-                            className="border rounded-lg px-3 py-2"
-                            placeholder="标题"
-                            value={form.title}
-                            onChange={event => setForm({ ...form, title: event.target.value })}
-                        />
-                        <input
-                            className="border rounded-lg px-3 py-2"
-                            placeholder="分类"
-                            value={form.category}
-                            onChange={event => setForm({ ...form, category: event.target.value })}
-                        />
-                        <input
-                            className="border rounded-lg px-3 py-2"
-                            placeholder="来源（可空）"
-                            value={form.source}
-                            onChange={event => setForm({ ...form, source: event.target.value })}
-                        />
-                        <input
-                            className="border rounded-lg px-3 py-2"
-                            placeholder="标签（用逗号分隔）"
-                            value={form.tags.join(',')}
-                            onChange={event =>
-                                setForm({
-                                    ...form,
-                                    tags: event.target.value.split(',').map(tag => tag.trim()).filter(Boolean),
-                                })
-                            }
-                        />
-                        <textarea
-                            className="border rounded-lg px-3 py-2 min-h-[100px]"
-                            placeholder="一句话总结"
-                            value={form.content}
-                            onChange={event => setForm({ ...form, content: event.target.value })}
-                        />
-                        <div className="relative">
-                            <textarea
-                                className="border rounded-lg px-3 py-2 min-h-[160px] w-full pr-10"
-                                placeholder="全文（可选）"
-                                value={form.fullArticle}
-                                onChange={event => setForm({ ...form, fullArticle: event.target.value })}
-                                ref={fullArticleRef}
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setFullscreenEdit(true)}
-                                className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
-                                title="全屏编辑"
-                            >
-                                <Maximize2 size={16} />
-                            </button>
-                        </div>
-                        <div className="border rounded-lg px-3 py-3">
-                            <div className="text-sm text-gray-600 mb-2">上传图片（支持多张，插入到全文）</div>
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xs text-gray-500">插入位置</span>
-                                {(['cursor', 'append'] as const).map(mode => (
-                                    <button
-                                        key={mode}
-                                        type="button"
-                                        onClick={() => setInsertMode(mode)}
-                                        className={`text-xs px-2 py-1 rounded-full border ${
-                                            insertMode === mode
-                                                ? 'bg-gray-900 text-white border-gray-900'
-                                                : 'border-gray-200 text-gray-600'
-                                        }`}
-                                    >
-                                        {mode === 'cursor' ? '光标处' : '末尾追加'}
-                                    </button>
-                                ))}
-                            </div>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                disabled={uploading}
-                                onChange={(event) => {
-                                    const fileList = event.target.files;
-                                    if (fileList && fileList.length) void handleImageUpload(Array.from(fileList));
-                                    event.currentTarget.value = '';
-                                }}
-                            />
-                            {uploading ? (
-                                <p className="text-xs text-gray-500 mt-2">上传中…</p>
-                            ) : null}
-                            {uploadError ? (
-                                <p className="text-xs text-red-500 mt-2">{uploadError}</p>
-                            ) : null}
-                            {lastImageUrls.length ? (
-                                <div className="mt-2 text-xs text-gray-500">
-                                    最近插入:
-                                    <div className="mt-1 flex flex-wrap gap-2">
-                                        {lastImageUrls.map(url => (
-                                            <span key={url} className="px-2 py-1 bg-gray-100 rounded">
-                                                已上传
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            ) : null}
-                        </div>
-                        <select
-                            className="border rounded-lg px-3 py-2"
-                            value={form.status}
-                            onChange={event => setForm({ ...form, status: event.target.value as CmsItem['status'] })}
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold">卡片管理</h2>
+                        <button
+                            onClick={openNewCard}
+                            className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-800"
                         >
-                            <option value="pending">待发布</option>
-                            <option value="published">已发布</option>
-                        </select>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button
-                                onClick={() => submitForm()}
-                                className="bg-gray-900 text-white rounded-lg py-2 text-sm font-semibold"
-                            >
-                                {editingId ? '保存修改' : '创建卡片'}
-                            </button>
-                            <button
-                                onClick={() => submitForm('published')}
-                                className="border border-gray-900 text-gray-900 rounded-lg py-2 text-sm font-semibold"
-                            >
-                                {editingId ? '保存并发布' : '创建并发布'}
-                            </button>
-                        </div>
+                            + 新建卡片
+                        </button>
                     </div>
+                    <p className="text-sm text-gray-500">点击下方卡片列表中的"编辑"按钮，或点击右上角新建卡片。</p>
                 </div>
 
                 <div className="bg-white border border-gray-200 rounded-2xl p-6">
@@ -590,17 +336,6 @@ export default function AdminPage() {
                     {syncError ? (
                         <p className="mt-2 text-xs text-red-500">{syncError}</p>
                     ) : null}
-
-                    <div className="mt-4 pt-4 border-t">
-                        <div className="text-sm text-gray-600 mb-2">快捷操作</div>
-                        <button
-                            type="button"
-                            onClick={() => bulkUpdateCategory('组织进化论', '产品沉思录')}
-                            className="w-full border border-amber-200 text-amber-700 bg-amber-50 rounded-lg py-2 text-sm hover:bg-amber-100"
-                        >
-                            组织进化论 → 产品沉思录
-                        </button>
-                    </div>
                 </div>
             </section>
 
@@ -701,6 +436,170 @@ export default function AdminPage() {
                     ))}
                 </div>
             </section>
+
+            {/* 编辑/新建卡片弹窗 */}
+            {editModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                        <div className="flex items-center justify-between p-4 border-b">
+                            <h3 className="text-lg font-semibold">
+                                {editingId ? '编辑卡片' : '新建卡片'}
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={closeEditModal}
+                                className="p-2 hover:bg-gray-100 rounded-lg"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">标题</label>
+                                <input
+                                    className="w-full border rounded-lg px-3 py-2"
+                                    placeholder="输入标题"
+                                    value={form.title}
+                                    onChange={event => setForm({ ...form, title: event.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">分类</label>
+                                    <input
+                                        className="w-full border rounded-lg px-3 py-2"
+                                        placeholder="如：产品沉思录"
+                                        value={form.category}
+                                        onChange={event => setForm({ ...form, category: event.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">来源（可空）</label>
+                                    <input
+                                        className="w-full border rounded-lg px-3 py-2"
+                                        placeholder="如：Lenny's Newsletter"
+                                        value={form.source}
+                                        onChange={event => setForm({ ...form, source: event.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">标签（逗号分隔）</label>
+                                <input
+                                    className="w-full border rounded-lg px-3 py-2"
+                                    placeholder="如：增长, PMF, 用户留存"
+                                    value={form.tags.join(',')}
+                                    onChange={event =>
+                                        setForm({
+                                            ...form,
+                                            tags: event.target.value.split(',').map(tag => tag.trim()).filter(Boolean),
+                                        })
+                                    }
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">一句话总结</label>
+                                <textarea
+                                    className="w-full border rounded-lg px-3 py-2 min-h-[80px]"
+                                    placeholder="用一句话概括这张卡片的核心观点"
+                                    value={form.content}
+                                    onChange={event => setForm({ ...form, content: event.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-sm font-medium text-gray-700">全文（可选）</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFullscreenEdit(true)}
+                                        className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                                    >
+                                        <Maximize2 size={12} />
+                                        全屏编辑
+                                    </button>
+                                </div>
+                                <textarea
+                                    className="w-full border rounded-lg px-3 py-2 min-h-[120px]"
+                                    placeholder="详细内容，支持 Markdown 格式"
+                                    value={form.fullArticle}
+                                    onChange={event => setForm({ ...form, fullArticle: event.target.value })}
+                                    ref={fullArticleRef}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">上传图片</label>
+                                <div className="border rounded-lg px-3 py-3 bg-gray-50">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-xs text-gray-500">插入位置</span>
+                                        {(['cursor', 'append'] as const).map(mode => (
+                                            <button
+                                                key={mode}
+                                                type="button"
+                                                onClick={() => setInsertMode(mode)}
+                                                className={`text-xs px-2 py-1 rounded-full border ${
+                                                    insertMode === mode
+                                                        ? 'bg-gray-900 text-white border-gray-900'
+                                                        : 'border-gray-200 text-gray-600 bg-white'
+                                                }`}
+                                            >
+                                                {mode === 'cursor' ? '光标处' : '末尾追加'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        disabled={uploading}
+                                        className="text-sm"
+                                        onChange={(event) => {
+                                            const fileList = event.target.files;
+                                            if (fileList && fileList.length) void handleImageUpload(Array.from(fileList));
+                                            event.currentTarget.value = '';
+                                        }}
+                                    />
+                                    {uploading && <p className="text-xs text-gray-500 mt-2">上传中…</p>}
+                                    {uploadError && <p className="text-xs text-red-500 mt-2">{uploadError}</p>}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">状态</label>
+                                <select
+                                    className="w-full border rounded-lg px-3 py-2"
+                                    value={form.status}
+                                    onChange={event => setForm({ ...form, status: event.target.value as CmsItem['status'] })}
+                                >
+                                    <option value="pending">待发布</option>
+                                    <option value="published">已发布</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="p-4 border-t flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={closeEditModal}
+                                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
+                            >
+                                取消
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => submitForm()}
+                                className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg"
+                            >
+                                {editingId ? '保存修改' : '创建卡片'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => submitForm('published')}
+                                className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg"
+                            >
+                                {editingId ? '保存并发布' : '创建并发布'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* 全屏编辑模态框 */}
             {fullscreenEdit && (

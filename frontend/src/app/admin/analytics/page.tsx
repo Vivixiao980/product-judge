@@ -98,6 +98,29 @@ interface Overview {
   messageFeedbackItems: MessageFeedbackItem[];
 }
 
+interface UsageData {
+  primaryProvider: string;
+  activeProviders: string[];
+  vectorEngine?: {
+    configured: boolean;
+    label?: string;
+    model?: string;
+  };
+  openRouter?: {
+    configured: boolean;
+    label?: string;
+    usage?: number;
+    limit?: number;
+    is_free_tier?: boolean;
+    rate_limit?: {
+      requests: number;
+      interval: string;
+    };
+    error?: string;
+  };
+  timestamp: string;
+}
+
 export default function AnalyticsPage() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -108,6 +131,9 @@ export default function AnalyticsPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [usageData, setUsageData] = useState<UsageData | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState('');
 
   const fetchData = useCallback(async (view: string) => {
     setIsLoading(true);
@@ -130,6 +156,25 @@ export default function AnalyticsPage() {
       return null;
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  const fetchUsage = useCallback(async () => {
+    setUsageLoading(true);
+    setUsageError('');
+    try {
+      const res = await fetch('/api/admin/usage');
+      if (res.ok) {
+        const data = await res.json();
+        setUsageData(data);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setUsageError(err.error || '获取用量失败');
+      }
+    } catch {
+      setUsageError('获取用量失败');
+    } finally {
+      setUsageLoading(false);
     }
   }, []);
 
@@ -214,10 +259,11 @@ export default function AnalyticsPage() {
   useEffect(() => {
     if (isAuthenticated && activeTab === 'overview') {
       loadOverview();
+      fetchUsage();
     } else if (isAuthenticated && activeTab === 'conversations') {
       loadConversations();
     }
-  }, [isAuthenticated, activeTab, loadOverview, loadConversations]);
+  }, [isAuthenticated, activeTab, loadOverview, loadConversations, fetchUsage]);
 
   if (!isAuthenticated) {
     return (
@@ -377,6 +423,129 @@ export default function AnalyticsPage() {
         {error && <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">{error}</div>}
         {activeTab === 'overview' && overview && (
           <div className="space-y-6">
+            {/* AI API 用量监控 */}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">AI API 用量</h2>
+                </div>
+                <button
+                  onClick={fetchUsage}
+                  disabled={usageLoading}
+                  className="text-sm text-purple-600 hover:text-purple-800 disabled:opacity-50"
+                >
+                  {usageLoading ? '刷新中...' : '刷新'}
+                </button>
+              </div>
+
+              {usageError && (
+                <div className="text-sm text-red-500 mb-4">{usageError}</div>
+              )}
+
+              {usageData ? (
+                <div className="space-y-4">
+                  {/* 当前使用的提供商 */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm text-gray-600">当前主要提供商:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      usageData.primaryProvider === 'VectorEngine'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-purple-100 text-purple-700'
+                    }`}>
+                      {usageData.primaryProvider}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* VectorEngine 卡片 */}
+                    <div className={`bg-white rounded-xl p-4 border ${
+                      usageData.primaryProvider === 'VectorEngine'
+                        ? 'border-green-200 ring-2 ring-green-100'
+                        : 'border-gray-200'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-semibold text-gray-900">VectorEngine</div>
+                        {usageData.primaryProvider === 'VectorEngine' && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">主用</span>
+                        )}
+                      </div>
+                      {usageData.vectorEngine?.configured ? (
+                        <>
+                          <div className="text-xs text-gray-500">模型: {usageData.vectorEngine.model}</div>
+                          <div className="text-xs text-green-600 mt-1">已配置</div>
+                        </>
+                      ) : (
+                        <div className="text-xs text-gray-400">未配置</div>
+                      )}
+                    </div>
+
+                    {/* OpenRouter 卡片 */}
+                    <div className={`bg-white rounded-xl p-4 border ${
+                      usageData.primaryProvider === 'OpenRouter'
+                        ? 'border-purple-200 ring-2 ring-purple-100'
+                        : 'border-gray-200'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-semibold text-gray-900">OpenRouter</div>
+                        {usageData.primaryProvider === 'OpenRouter' && (
+                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">主用</span>
+                        )}
+                        {usageData.primaryProvider === 'VectorEngine' && usageData.openRouter?.configured && (
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">备用</span>
+                        )}
+                      </div>
+                      {usageData.openRouter?.configured ? (
+                        usageData.openRouter.error ? (
+                          <div className="text-xs text-red-500">{usageData.openRouter.error}</div>
+                        ) : (
+                          <>
+                            <div className="text-xs text-gray-500">
+                              {usageData.openRouter.is_free_tier ? '免费版' : '付费版'}
+                            </div>
+                            <div className="text-sm font-medium text-gray-900 mt-1">
+                              已用: ${(usageData.openRouter.usage || 0).toFixed(4)}
+                            </div>
+                            {usageData.openRouter.limit && usageData.openRouter.limit > 0 && (
+                              <div className="mt-2">
+                                <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-purple-500 rounded-full"
+                                    style={{
+                                      width: `${Math.min(100, ((usageData.openRouter.usage || 0) / usageData.openRouter.limit) * 100)}%`
+                                    }}
+                                  />
+                                </div>
+                                <div className="text-xs text-gray-400 mt-1">
+                                  限额 ${usageData.openRouter.limit}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )
+                      ) : (
+                        <div className="text-xs text-gray-400">未配置</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">
+                  {usageLoading ? '加载中...' : '点击刷新获取用量数据'}
+                </div>
+              )}
+
+              {usageData && (
+                <div className="mt-4 text-xs text-gray-400">
+                  更新时间: {new Date(usageData.timestamp).toLocaleString('zh-CN')}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white p-6 rounded-2xl shadow-sm">
                 <div className="flex items-center gap-3 mb-2">

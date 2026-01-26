@@ -1,9 +1,12 @@
 'use client';
 
-import { Download, Share2, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Download, Share2, MessageSquare, CheckCircle2, Loader2 } from 'lucide-react';
 import { ExpertAnalysis, USER_GOALS, UserGoal } from '../types';
 import { getExpertById } from '@/data/experts';
 import { Summary } from '@/app/chat/types';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 interface ReportViewProps {
   summary: Summary;
@@ -14,6 +17,8 @@ interface ReportViewProps {
 }
 
 export function ReportView({ summary, analyses, userGoal = 'validate', onBack, onContinueChat }: ReportViewProps) {
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const completedAnalyses = analyses.filter((a) => a.status === 'completed');
   const overallScore =
     completedAnalyses.length > 0
@@ -30,8 +35,53 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
   const currentGoal = USER_GOALS.find(g => g.id === userGoal);
 
   const handleDownloadPDF = async () => {
-    // TODO: 实现 PDF 下载
-    alert('PDF 下载功能开发中...');
+    if (!reportRef.current || isGeneratingPDF) return;
+
+    setIsGeneratingPDF(true);
+    try {
+      // 临时隐藏底部操作栏
+      const actionBar = reportRef.current.querySelector('[data-action-bar]') as HTMLElement;
+      if (actionBar) actionBar.style.display = 'none';
+
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#f9fafb',
+      });
+
+      // 恢复底部操作栏
+      if (actionBar) actionBar.style.display = '';
+
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210; // A4 宽度 mm
+      const pageHeight = 297; // A4 高度 mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // 第一页
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // 如果内容超过一页，添加更多页
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const fileName = `ProductThink报告_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.pdf`;
+      pdf.save(fileName);
+    } catch (error) {
+      console.error('PDF 生成失败:', error);
+      alert('PDF 生成失败，请重试');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   const handleShare = async () => {
@@ -61,7 +111,7 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div ref={reportRef} className="max-w-4xl mx-auto">
       {/* 报告头部 */}
       <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white rounded-2xl p-8 mb-6">
         <div className="flex items-center justify-between mb-6">
@@ -85,10 +135,11 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
             </button>
             <button
               onClick={handleDownloadPDF}
-              className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+              disabled={isGeneratingPDF}
+              className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50"
               title="下载 PDF"
             >
-              <Download size={20} />
+              {isGeneratingPDF ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
             </button>
           </div>
         </div>
@@ -269,7 +320,7 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
       </div>
 
       {/* 底部操作 */}
-      <div className="sticky bottom-4 bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
+      <div data-action-bar className="sticky bottom-4 bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
         <div className="flex items-center justify-between">
           <button
             onClick={onBack}
@@ -281,10 +332,11 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
           <div className="flex gap-3">
             <button
               onClick={handleDownloadPDF}
-              className="px-4 py-2 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors flex items-center gap-2"
+              disabled={isGeneratingPDF}
+              className="px-4 py-2 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
-              <Download size={18} />
-              下载 PDF
+              {isGeneratingPDF ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+              {isGeneratingPDF ? '生成中...' : '下载 PDF'}
             </button>
             <button
               onClick={onContinueChat}

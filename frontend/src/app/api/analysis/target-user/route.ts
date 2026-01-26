@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createAICompletionJson } from '@/lib/ai-client';
 
 function extractJson(text: string) {
   const match = text.match(/```json\s*([\s\S]*?)\s*```/);
@@ -8,10 +9,6 @@ function extractJson(text: string) {
 
 export async function POST(req: NextRequest) {
   const { summary, productType } = await req.json();
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
-  }
 
   const productDescription = `
 ## 产品概要
@@ -54,31 +51,15 @@ ${productType || '未指定'}
 \`\`\``;
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.APP_URL || 'http://localhost:3000',
-        'X-Title': 'ProductThink',
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: `请根据以下产品生成目标用户画像：\n\n${productDescription}` },
-        ],
-      }),
+    const { content, provider } = await createAICompletionJson({
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: `请根据以下产品生成目标用户画像：\n\n${productDescription}` },
+      ],
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('Target user error:', errorBody);
-      return NextResponse.json({ error: 'Failed to generate target users' }, { status: response.status });
-    }
+    console.log(`[Target User API] Using provider: ${provider}`);
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
     const jsonText = extractJson(content);
 
     try {

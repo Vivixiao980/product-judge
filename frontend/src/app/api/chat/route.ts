@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { PRODUCT_JUDGE_SYSTEM_PROMPT } from '@/data/prompts';
+import { createAICompletion } from '@/lib/ai-client';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
@@ -28,11 +29,6 @@ async function getKnowledgeContext(query: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
     const { messages } = await req.json();
-
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-        return new Response(JSON.stringify({ error: 'API key not configured' }), { status: 500 });
-    }
 
     // 构建更完整的查询：结合最近几轮对话内容
     const recentMessages = messages.slice(-6); // 最近 3 轮对话
@@ -66,80 +62,71 @@ ${knowledgeContext}
 记住：你不是在考试用户，而是在和用户一起探索。分享知识是为了帮助用户思考，而不是炫耀。`;
     }
 
-    const openRouterMessages = [
-        { role: 'system', content: enhancedSystemPrompt },
+    const aiMessages = [
+        { role: 'system' as const, content: enhancedSystemPrompt },
         ...messages,
     ];
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.APP_URL || 'http://localhost:3000',
-            'X-Title': 'ProductThink',
-        },
-        body: JSON.stringify({
-            model: 'anthropic/claude-3.5-sonnet',
-            messages: openRouterMessages,
+    try {
+        const { response, provider } = await createAICompletion({
+            messages: aiMessages,
             stream: true,
-        }),
-    });
+        });
 
-    if (!response.ok) {
-        const errorBody = await response.text();
-        console.error('OpenRouter API Error:', errorBody);
-        return new Response(JSON.stringify({ error: 'Failed to get AI response' }), { status: response.status });
-    }
+        console.log(`[Chat API] Using provider: ${provider}`);
 
-    if (!response.body) {
-        return new Response(JSON.stringify({ error: 'No response stream' }), { status: 500 });
-    }
+        if (!response.body) {
+            return new Response(JSON.stringify({ error: 'No response stream' }), { status: 500 });
+        }
 
-    const stream = new ReadableStream({
-        async start(controller) {
-            const reader = response.body!.getReader();
-            const decoder = new TextDecoder();
-            const encoder = new TextEncoder();
-            let buffer = '';
+        const stream = new ReadableStream({
+            async start(controller) {
+                const reader = response.body!.getReader();
+                const decoder = new TextDecoder();
+                const encoder = new TextEncoder();
+                let buffer = '';
 
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
 
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed.startsWith('data:')) continue;
-                    const data = trimmed.slice(5).trim();
-                    if (data === '[DONE]') {
-                        controller.close();
-                        return;
-                    }
-
-                    try {
-                        const json = JSON.parse(data);
-                        const delta = json.choices?.[0]?.delta?.content;
-                        if (delta) {
-                            controller.enqueue(encoder.encode(delta));
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed.startsWith('data:')) continue;
+                        const data = trimmed.slice(5).trim();
+                        if (data === '[DONE]') {
+                            controller.close();
+                            return;
                         }
-                    } catch (error) {
-                        console.error('Failed to parse stream chunk:', error);
+
+                        try {
+                            const json = JSON.parse(data);
+                            const delta = json.choices?.[0]?.delta?.content;
+                            if (delta) {
+                                controller.enqueue(encoder.encode(delta));
+                            }
+                        } catch (error) {
+                            console.error('Failed to parse stream chunk:', error);
+                        }
                     }
                 }
-            }
 
-            controller.close();
-        },
-    });
+                controller.close();
+            },
+        });
 
-    return new Response(stream, {
-        status: 200,
-        headers: {
-            'Content-Type': 'text/plain; charset=utf-8',
-            'Cache-Control': 'no-cache',
-        },
-    });
+        return new Response(stream, {
+            status: 200,
+            headers: {
+                'Content-Type': 'text/plain; charset=utf-8',
+                'Cache-Control': 'no-cache',
+            },
+        });
+    } catch (error) {
+        console.error('Chat API error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to get AI response' }), { status: 500 });
+    }
 }
