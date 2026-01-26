@@ -17,6 +17,8 @@ export default function ChatPage() {
         isUserScrollingRef,
         currentStage,
         stageConfig,
+        deepTurns,
+        minDeepTurns,
         handleSend,
         handleQuickSend,
     } = useChat();
@@ -67,6 +69,7 @@ export default function ChatPage() {
                             onQuickSend={handleQuickSend}
                             summary={summary}
                             currentStage={currentStage}
+                            canStartAnalysis={currentStage === 'analysis'}
                         />
                     </div>
                     <Sidebar
@@ -74,6 +77,9 @@ export default function ChatPage() {
                         summary={summary}
                         isSummarizing={isSummarizing}
                         currentStage={currentStage}
+                        canStartAnalysis={currentStage === 'analysis'}
+                        deepTurns={deepTurns}
+                        minDeepTurns={minDeepTurns}
                     />
                 </div>
                 {toast ? (

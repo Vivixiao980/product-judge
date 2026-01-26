@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
-import { Users, MessageCircle, Search, CheckCircle2, Circle, Lock } from 'lucide-react';
+import { Users, CheckCircle2, Circle, Lock } from 'lucide-react';
 import { Summary, StageConfig, Stage } from '../types';
 
 interface SidebarProps {
@@ -10,6 +10,9 @@ interface SidebarProps {
     summary: Summary;
     isSummarizing: boolean;
     currentStage: Stage;
+    canStartAnalysis: boolean;
+    deepTurns: number;
+    minDeepTurns: number;
 }
 
 const STAGES: { key: Stage; label: string; description: string }[] = [
@@ -18,7 +21,7 @@ const STAGES: { key: Stage; label: string; description: string }[] = [
     { key: 'analysis', label: 'Step 3 多视角分析', description: '生成完整诊断报告' },
 ];
 
-export function Sidebar({ stageConfig, summary, isSummarizing, currentStage }: SidebarProps) {
+export function Sidebar({ stageConfig, summary, isSummarizing, currentStage, canStartAnalysis, deepTurns, minDeepTurns }: SidebarProps) {
     const router = useRouter();
 
     const handleStartAnalysis = () => {
@@ -26,8 +29,7 @@ export function Sidebar({ stageConfig, summary, isSummarizing, currentStage }: S
         router.push('/analysis');
     };
 
-    // 只有进入 analysis 阶段才能点击
-    const canStartAnalysis = currentStage === 'analysis';
+    const remainingTurns = Math.max(0, minDeepTurns - deepTurns);
 
     // 计算阶段索引
     const currentIndex = STAGES.findIndex(s => s.key === currentStage);
@@ -106,35 +108,41 @@ export function Sidebar({ stageConfig, summary, isSummarizing, currentStage }: S
                 <div className="mt-3 text-xs text-gray-500">{stageConfig.takeaway}</div>
             </div>
 
-            {/* 多视角分析入口 - 只在可用时高亮显示 */}
-            <button
-                onClick={handleStartAnalysis}
-                disabled={!canStartAnalysis}
-                className={clsx(
-                    "border rounded-2xl p-4 text-left transition-all",
-                    canStartAnalysis
-                        ? "border-black bg-black text-white cursor-pointer hover:bg-gray-800"
-                        : "border-gray-100 bg-gray-50 cursor-not-allowed opacity-60"
-                )}
-            >
-                <div className="flex items-center gap-3 mb-2">
-                    <Users size={20} className={canStartAnalysis ? "text-white" : "text-gray-400"} />
+            {/* 多视角分析入口 - 弱化视觉权重 */}
+            <div className="border border-gray-100 bg-white rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <Users size={16} className={canStartAnalysis ? "text-gray-700" : "text-gray-300"} />
+                        <span className="text-sm font-semibold text-gray-900">多视角分析</span>
+                    </div>
                     <span className={clsx(
-                        "font-semibold",
-                        canStartAnalysis ? "text-white" : "text-gray-400"
+                        "text-xs",
+                        canStartAnalysis ? "text-green-600" : "text-gray-400"
                     )}>
-                        进入多视角分析
+                        {canStartAnalysis ? "可进入" : "未解锁"}
                     </span>
                 </div>
-                <p className={clsx(
-                    "text-xs",
-                    canStartAnalysis ? "text-gray-300" : "text-gray-400"
-                )}>
-                    {canStartAnalysis
-                        ? "已收集足够信息，点击生成完整诊断报告"
-                        : "完成 Step 1 和 Step 2 后解锁"}
+                <p className="text-xs text-gray-500">
+                    {canStartAnalysis ? "准备好后即可生成完整诊断报告。" : "再聊几轮关键问题，保证建议更贴合。"}
                 </p>
-            </button>
+                <div className="mt-3 flex items-center gap-2">
+                    <button
+                        onClick={handleStartAnalysis}
+                        disabled={!canStartAnalysis}
+                        className={clsx(
+                            "text-xs px-3 py-1.5 rounded-full border transition-colors",
+                            canStartAnalysis
+                                ? "border-gray-300 text-gray-700 hover:border-gray-400"
+                                : "border-gray-200 text-gray-400 cursor-not-allowed"
+                        )}
+                    >
+                        进入多视角分析
+                    </button>
+                    {!canStartAnalysis && remainingTurns > 0 ? (
+                        <span className="text-xs text-gray-400">还需 {remainingTurns} 轮追问</span>
+                    ) : null}
+                </div>
+            </div>
 
             {/* Summary */}
             <div className="border border-gray-100 bg-white rounded-2xl p-4">

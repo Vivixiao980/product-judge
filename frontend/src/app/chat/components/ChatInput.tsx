@@ -12,6 +12,7 @@ interface ChatInputProps {
     onQuickSend: (content: string) => void;
     summary?: Summary;
     currentStage?: Stage;
+    canStartAnalysis?: boolean;
 }
 
 const quickActions = [
@@ -19,7 +20,7 @@ const quickActions = [
     { label: '给我验证方案', message: '给我一个可验证的最小实验方案。' },
 ];
 
-export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend, summary, currentStage }: ChatInputProps) {
+export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend, summary, currentStage, canStartAnalysis }: ChatInputProps) {
     const router = useRouter();
 
     const handleGoToAnalysis = () => {
@@ -65,13 +66,15 @@ export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend, sum
                         {action.label}
                     </button>
                 ))}
-                <button
-                    onClick={handleGoToAnalysis}
-                    disabled={isLoading}
-                    className="text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
-                >
-                    跳到多视角分析
-                </button>
+                {canStartAnalysis ? (
+                    <button
+                        onClick={handleGoToAnalysis}
+                        disabled={isLoading}
+                        className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-800 transition-colors disabled:opacity-50"
+                    >
+                        进入多视角分析
+                    </button>
+                ) : null}
             </div>
             <p className="text-center text-xs text-gray-400 mt-2">
                 产品顾问会从多个视角帮你审视产品，放轻松聊就好 😊

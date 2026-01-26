@@ -92,14 +92,17 @@ const isMeaningful = (text: unknown, minLines: number) => {
     return lines.length >= minLines;
 };
 
+const MIN_DEEP_TURNS = 3;
+
 // 计算当前阶段
-const computeStage = (summary: Summary): Stage => {
+const computeStage = (summary: Summary, deepTurns: number): Stage => {
     const productReady = isMeaningful(summary.product, 2);
     const adviceReady = isMeaningful(summary.aiAdvice, 2);
     const userNotesReady = isMeaningful(summary.userNotes, 1);
 
     if (!productReady) return 'info';
     if (!adviceReady || !userNotesReady) return 'deep';
+    if (deepTurns < MIN_DEEP_TURNS) return 'deep';
     return 'analysis';
 };
 
@@ -154,13 +157,14 @@ export function useChat() {
         userNotes: '还没有记录到你的观点。',
         cases: [],
     });
+    const [deepTurns, setDeepTurns] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const prevStageRef = useRef<Stage | null>(null);
     const shouldScrollRef = useRef(false);
     const isUserScrollingRef = useRef(false);
 
     // 计算当前阶段（提前计算，供后续使用）
-    const currentStage = computeStage(summary);
+    const currentStage = computeStage(summary, deepTurns);
 
     // 阶段切换埋点
     useEffect(() => {
@@ -202,7 +206,7 @@ export function useChat() {
                 const newSummary = normalizeSummary(data.summary);
                 setSummary(newSummary);
                 // 保存对话到数据库
-                const newStage = computeStage(newSummary);
+                const newStage = computeStage(newSummary, deepTurns);
                 void saveConversation(snapshot, newSummary, newStage);
             }
         } catch (error) {
@@ -217,6 +221,10 @@ export function useChat() {
 
         if (!messages.some(msg => msg.role === 'user')) {
             trackChatStart();
+        }
+
+        if (currentStage === 'deep') {
+            setDeepTurns(prev => prev + 1);
         }
 
         // 埋点：发送消息
@@ -346,6 +354,8 @@ export function useChat() {
         isUserScrollingRef,
         currentStage,
         stageConfig,
+        deepTurns,
+        minDeepTurns: MIN_DEEP_TURNS,
         handleSend,
         handleQuickSend,
     };
