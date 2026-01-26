@@ -96,6 +96,12 @@ const normalizeSummary = (value: unknown): Summary => {
         return String(input);
     };
 
+    const extractQuotedLines = (raw: string) => {
+        const matches = raw.match(/"([^"]+)"/g);
+        if (!matches) return '';
+        return matches.map(item => item.replace(/(^")|("$)/g, '').trim()).filter(Boolean).join('\n');
+    };
+
     const normalizeText = (text: string) => {
         const trimmed = text.trim();
         if (!trimmed) return trimmed;
@@ -104,7 +110,8 @@ const normalizeSummary = (value: unknown): Summary => {
                 const parsed = JSON.parse(sanitizeJsonText(trimmed));
                 return formatParsed(parsed).trim();
             } catch {
-                return trimmed;
+                const quoted = extractQuotedLines(trimmed);
+                return quoted || trimmed;
             }
         }
         return trimmed;

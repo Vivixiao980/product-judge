@@ -25,6 +25,14 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
       ? completedAnalyses.reduce((sum, a) => sum + a.score, 0) / completedAnalyses.length
       : 0;
 
+  const stripJsonBlocks = (raw: string) => {
+    if (!raw) return '';
+    let cleaned = raw.replace(/```json[\s\S]*?```/g, '');
+    cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
+    cleaned = cleaned.replace(/\{[\s\S]*"score"[\s\S]*\}/g, '');
+    return cleaned.trim();
+  };
+
   // 汇总所有优势、风险、建议、行动项
   const allStrengths = [...new Set(completedAnalyses.flatMap((a) => a.strengths))];
   const allRisks = [...new Set(completedAnalyses.flatMap((a) => a.risks))];
@@ -310,9 +318,11 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
                     <span className="font-bold">{analysis.score.toFixed(1)}</span>
                   </div>
                 </div>
-                <p className="text-gray-600 text-sm whitespace-pre-wrap line-clamp-4">
-                  {analysis.analysis}
-                </p>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
+                    {stripJsonBlocks(analysis.analysis)}
+                  </p>
+                </div>
               </div>
             );
           })}

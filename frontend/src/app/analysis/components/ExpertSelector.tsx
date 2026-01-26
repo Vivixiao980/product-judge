@@ -93,7 +93,7 @@ export function ExpertSelector({ summary, onStartAnalysis }: ExpertSelectorProps
   // 按类别分组专家
   const expertsByCategory = EXPERT_CATEGORIES.map((category) => ({
     ...category,
-    experts: EXPERTS.filter((e) => e.category === category.id),
+    experts: EXPERTS.filter((e) => e.category === category.id && e.id !== 'target_user'),
   }));
 
   return (

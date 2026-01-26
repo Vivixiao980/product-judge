@@ -31,9 +31,15 @@ export function ExpertChat({ analysis }: ExpertChatProps) {
     error: <AlertCircle size={20} className="text-red-500" />,
   };
 
-  const displayText = analysis.analysis
-    ? analysis.analysis.replace(/```json[\s\S]*?```/g, '').trim()
-    : '';
+  const stripAnalysisJson = (raw: string) => {
+    if (!raw) return '';
+    let cleaned = raw.replace(/```json[\s\S]*?```/g, '');
+    cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
+    cleaned = cleaned.replace(/\{[\s\S]*"score"[\s\S]*\}/g, '');
+    return cleaned.trim();
+  };
+
+  const displayText = stripAnalysisJson(analysis.analysis || '');
 
   return (
     <div className={`bg-white rounded-2xl shadow-sm overflow-hidden transition-all ${
@@ -77,23 +83,23 @@ export function ExpertChat({ analysis }: ExpertChatProps) {
         )}
 
         {(analysis.status === 'analyzing' || analysis.status === 'completed') && (
-          <div className="prose prose-sm max-w-none prose-pre:whitespace-pre-wrap prose-pre:break-words">
+          <div className="prose prose-sm max-w-none text-gray-700 prose-pre:whitespace-pre-wrap prose-pre:break-words">
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkBreaks]}
               components={{
                 pre: ({ children }) => (
-                  <pre className="whitespace-pre-wrap break-words overflow-x-auto bg-black/5 p-3 rounded">
+                  <pre className="whitespace-pre-wrap break-words overflow-x-auto bg-gray-50 p-3 rounded text-gray-600">
                     {children}
                   </pre>
                 ),
                 code: ({ children, className }) => {
                   const isBlock = className?.includes('language-');
                   return isBlock ? (
-                    <code className="font-mono text-[0.85em] whitespace-pre-wrap break-words">
+                    <code className="font-mono text-[0.85em] whitespace-pre-wrap break-words text-gray-700">
                       {children}
                     </code>
                   ) : (
-                    <code className="px-1 py-0.5 rounded bg-black/5 font-mono text-[0.85em]">
+                    <code className="px-1 py-0.5 rounded bg-gray-100 font-mono text-[0.85em] text-gray-700">
                       {children}
                     </code>
                   );

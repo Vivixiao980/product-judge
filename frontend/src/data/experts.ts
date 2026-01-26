@@ -19,23 +19,22 @@ export const EXPERT_CATEGORIES = [
   { id: 'investor' as const, name: '投资人' },
   { id: 'tech' as const, name: '技术专家' },
   { id: 'design' as const, name: '设计专家' },
-  { id: 'user' as const, name: '目标用户' },
 ];
 
 // 产品类型推荐配置
 export const PRODUCT_TYPE_RECOMMENDATIONS: Record<string, string[]> = {
-  'B2C消费品': ['liang_ning', 'lenny', 'zhang_yiming', 'kenya_hara', 'target_user'],
+  'B2C消费品': ['liang_ning', 'lenny', 'zhang_yiming', 'kenya_hara'],
   'B2B企业服务': ['yu_jun', 'paul_graham', 'shen_nanpeng', 'tech_architect'],
-  'SaaS产品': ['lenny', 'paul_graham', 'tech_architect', 'kenya_hara', 'target_user'],
-  '社交/社区': ['liang_ning', 'zhang_yiming', 'lenny', 'kenya_hara', 'target_user'],
-  '电商/零售': ['liang_ning', 'shen_nanpeng', 'zhang_yiming', 'kenya_hara', 'target_user'],
+  'SaaS产品': ['lenny', 'paul_graham', 'tech_architect', 'kenya_hara'],
+  '社交/社区': ['liang_ning', 'zhang_yiming', 'lenny', 'kenya_hara'],
+  '电商/零售': ['liang_ning', 'shen_nanpeng', 'zhang_yiming', 'kenya_hara'],
   '金融科技': ['shen_nanpeng', 'yu_jun', 'tech_architect', 'paul_graham'],
-  '内容/媒体': ['zhang_yiming', 'lenny', 'liang_ning', 'kenya_hara', 'target_user'],
-  '工具/效率': ['yu_jun', 'lenny', 'tech_architect', 'kenya_hara', 'target_user'],
-  '游戏/娱乐': ['liang_ning', 'zhang_yiming', 'kenya_hara', 'target_user', 'lenny'],
-  '教育': ['liang_ning', 'yu_jun', 'kenya_hara', 'target_user', 'paul_graham'],
-  '医疗健康': ['shen_nanpeng', 'yu_jun', 'tech_architect', 'target_user'],
-  '硬件/IoT': ['tech_architect', 'shen_nanpeng', 'kenya_hara', 'yu_jun', 'target_user'],
+  '内容/媒体': ['zhang_yiming', 'lenny', 'liang_ning', 'kenya_hara'],
+  '工具/效率': ['yu_jun', 'lenny', 'tech_architect', 'kenya_hara'],
+  '游戏/娱乐': ['liang_ning', 'zhang_yiming', 'kenya_hara', 'lenny'],
+  '教育': ['liang_ning', 'yu_jun', 'kenya_hara', 'paul_graham'],
+  '医疗健康': ['shen_nanpeng', 'yu_jun', 'tech_architect'],
+  '硬件/IoT': ['tech_architect', 'shen_nanpeng', 'kenya_hara', 'yu_jun'],
 };
 
 export const EXPERTS: Expert[] = [
