@@ -32,11 +32,19 @@ function extractAnalysisResult(text: string): {
     actionItems: [],
   };
 
-  // 尝试提取 JSON
-  const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
-  if (jsonMatch) {
+  const sanitizeJson = (raw: string) => {
+    let cleaned = raw.trim();
+    cleaned = cleaned.replace(/```(?:json)?/gi, '').replace(/```/g, '');
+    cleaned = cleaned.replace(/^[\s\S]*?(\{[\s\S]*\})[\s\S]*$/m, '$1');
+    cleaned = cleaned.replace(/([,{]\s*)([A-Za-z0-9_\\u4e00-\\u9fa5]+)\s*:/g, '$1"$2":');
+    cleaned = cleaned.replace(/'([^']*)'/g, '"$1"');
+    cleaned = cleaned.replace(/,(\s*[}\\]])/g, '$1');
+    return cleaned;
+  };
+
+  const parseJsonBlock = (raw: string) => {
     try {
-      const parsed = JSON.parse(jsonMatch[1]);
+      const parsed = JSON.parse(sanitizeJson(raw));
       return {
         score: parsed.score || 7,
         strengths: parsed.strengths || [],
@@ -45,8 +53,22 @@ function extractAnalysisResult(text: string): {
         actionItems: parsed.actionItems || parsed.action_items || [],
       };
     } catch {
-      // 解析失败，使用默认值
+      return null;
     }
+  };
+
+  // 尝试提取 ```json``` 代码块
+  const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+  if (jsonMatch) {
+    const result = parseJsonBlock(jsonMatch[1]);
+    if (result) return result;
+  }
+
+  // 尝试提取任意 JSON 对象
+  const objMatch = text.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    const result = parseJsonBlock(objMatch[0]);
+    if (result) return result;
   }
 
   // 尝试从文本中提取评分

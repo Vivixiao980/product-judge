@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getExpertById, generateTargetUserPrompt } from '@/data/experts';
+import { createAICompletion } from '@/lib/ai-client';
 
 // 根据用户目标生成额外的提示词
 function getGoalPrompt(userGoal: string): string {
@@ -60,13 +61,20 @@ function getGoalPrompt(userGoal: string): string {
   return goalPrompts[userGoal] || '';
 }
 
+function getScoreGuideline(category: string): string {
+  const guide: Record<string, string> = {
+    product: '评分风格：更关注产品价值与用户需求匹配度，评分偏中性（6.0-7.8）。',
+    growth: '评分风格：更关注增长与留存，评分可略乐观（6.5-8.2）。',
+    investor: '评分风格：更关注商业化与风险，评分偏谨慎（5.8-7.3）。',
+    tech: '评分风格：更关注技术可行性与成本，评分偏谨慎（5.8-7.3）。',
+    design: '评分风格：更关注体验与呈现，评分偏中性（6.0-7.8）。',
+    user: '评分风格：更关注使用动机与易用性，评分偏真实体验（5.8-7.6）。',
+  };
+  return guide[category] || '评分风格：根据你的专业视角给出客观评分（6.0-8.0）。';
+}
+
 export async function POST(req: NextRequest) {
   const { summary, expertId, productType, userGoal, targetUserDescription } = await req.json();
-
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'API key not configured' }), { status: 500 });
-  }
 
   const expert = getExpertById(expertId);
   if (!expert) {
@@ -99,12 +107,14 @@ ${productType}
 
   // 获取目标相关的提示词
   const goalPrompt = getGoalPrompt(userGoal || 'validate');
+  const scoreGuideline = getScoreGuideline(expert.category);
 
-  const messages = [
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     {
       role: 'system',
       content: `${systemPrompt}
 ${goalPrompt}
+${scoreGuideline}
 
 ## 输出格式要求
 请按以下格式输出你的分析：
@@ -126,6 +136,8 @@ ${goalPrompt}
 
 注意：
 - 评分要客观，不要太高也不要太低
+- 评分必须保留 1 位小数
+- 请基于你的专业视角给出独立评分，避免与其他专家出现相同分数
 - 优势、风险、建议各 2-4 条，每条简洁有力
 - actionItems 是最重要的部分，要给出 3-5 个本周就能执行的具体行动
 - 每个 actionItem 要非常具体，包含：做什么、怎么做、预期结果`,
@@ -137,26 +149,12 @@ ${goalPrompt}
   ];
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.APP_URL || 'http://localhost:3000',
-        'X-Title': 'ProductThink',
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
-        messages,
-        stream: true,
-      }),
+    const { response, provider } = await createAICompletion({
+      messages,
+      stream: true,
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('OpenRouter analysis error:', errorBody);
-      return new Response(JSON.stringify({ error: 'Failed to get analysis' }), { status: response.status });
-    }
+    console.log(`[Analysis API] Using provider: ${provider}`);
 
     // 返回流式响应
     const encoder = new TextEncoder();
