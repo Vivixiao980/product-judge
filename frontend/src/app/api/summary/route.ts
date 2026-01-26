@@ -111,11 +111,69 @@ export async function POST(req: NextRequest) {
 
     const sanitizeJson = (raw: string) => {
         let cleaned = raw.trim();
+        cleaned = cleaned.replace(/```(?:json)?/gi, '').replace(/```/g, '');
         cleaned = cleaned.replace(/^[\s\S]*?(\{[\s\S]*\})[\s\S]*$/m, '$1');
         cleaned = cleaned.replace(/([,{]\s*)([A-Za-z0-9_\\u4e00-\\u9fa5]+)\s*:/g, '$1"$2":');
         cleaned = cleaned.replace(/'([^']*)'/g, '"$1"');
         cleaned = cleaned.replace(/,(\s*[}\\]])/g, '$1');
         return cleaned;
+    };
+
+    const extractFallbackSummary = (raw: string) => {
+        const textBlock = raw.replace(/\r\n/g, '\n');
+        const keyPattern = /(?:^|\n)\s*"?\s*(product|aiAdvice|userNotes|cases)\s*"?\s*[:：]\s*/i;
+        const findField = (key: string) => {
+            const regex = new RegExp(`(?:^|\\n)\\s*"?\\s*${key}\\s*"?\\s*[:：]\\s*`, 'i');
+            const match = textBlock.match(regex);
+            if (!match || match.index == null) return '';
+            const start = match.index + match[0].length;
+            const rest = textBlock.slice(start);
+            const next = rest.search(keyPattern);
+            const segment = next === -1 ? rest : rest.slice(0, next);
+            return segment.trim();
+        };
+
+        const product = findField('product');
+        const aiAdvice = findField('aiAdvice');
+        const userNotes = findField('userNotes');
+        const casesRaw = findField('cases');
+
+        let cases: { name: string; reason: string }[] = [];
+        if (casesRaw) {
+            const arrayMatch = casesRaw.match(/\[[\s\S]*\]/);
+            if (arrayMatch) {
+                try {
+                    const parsed = JSON.parse(sanitizeJson(arrayMatch[0]));
+                    const normalized = normalizeSummary({ cases: parsed });
+                    cases = normalized.cases;
+                } catch {
+                    // fall through to line parsing
+                }
+            }
+            if (!cases.length) {
+                cases = casesRaw
+                    .split('\n')
+                    .map(line => line.replace(/^[-*]\s*/, '').trim())
+                    .filter(Boolean)
+                    .slice(0, 3)
+                    .map(line => {
+                        const [name, ...rest] = line.split(/[:：\-—]/);
+                        return {
+                            name: (name || '').trim(),
+                            reason: rest.join(' ').trim(),
+                        };
+                    })
+                    .filter(item => item.name || item.reason);
+            }
+        }
+
+        if (!product && !aiAdvice && !userNotes && !cases.length) return null;
+        return normalizeSummary({
+            product,
+            aiAdvice,
+            userNotes,
+            cases,
+        });
     };
 
     try {
@@ -130,6 +188,10 @@ export async function POST(req: NextRequest) {
             } catch (innerError) {
                 console.error('Failed to parse extracted summary JSON:', innerError);
             }
+        }
+        const fallback = extractFallbackSummary(text);
+        if (fallback) {
+            return new Response(JSON.stringify({ summary: fallback }), { status: 200 });
         }
         console.error('Failed to parse summary JSON:', error);
         return new Response(
