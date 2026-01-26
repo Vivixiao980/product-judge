@@ -46,6 +46,43 @@ const saveConversation = async (
 };
 
 const normalizeSummary = (value: unknown): Summary => {
+    const sanitizeJsonText = (raw: string) => {
+        let cleaned = raw.trim();
+        cleaned = cleaned.replace(/```(?:json)?/gi, '').replace(/```/g, '');
+        cleaned = cleaned.replace(/^[\s\S]*?(\{[\s\S]*\}|\[[\s\S]*\])[\s\S]*$/m, '$1');
+        cleaned = cleaned.replace(/([,{]\s*)([A-Za-z0-9_\\u4e00-\\u9fa5]+)\s*:/g, '$1"$2":');
+        cleaned = cleaned.replace(/'([^']*)'/g, '"$1"');
+        cleaned = cleaned.replace(/,(\s*[}\\]])/g, '$1');
+        return cleaned;
+    };
+
+    const formatParsed = (parsed: unknown): string => {
+        if (Array.isArray(parsed)) {
+            return parsed
+                .map(item => {
+                    if (item == null) return '';
+                    if (typeof item === 'string') return item.trim();
+                    if (typeof item === 'object') {
+                        return Object.entries(item as Record<string, unknown>)
+                            .map(([key, val]) => `${key}：${formatParsed(val)}`)
+                            .filter(Boolean)
+                            .join('\n');
+                    }
+                    return String(item);
+                })
+                .filter(Boolean)
+                .join('\n');
+        }
+        if (parsed && typeof parsed === 'object') {
+            return Object.entries(parsed as Record<string, unknown>)
+                .map(([key, val]) => `${key}：${formatParsed(val)}`)
+                .filter(Boolean)
+                .join('\n');
+        }
+        if (parsed == null) return '';
+        return String(parsed);
+    };
+
     const coerceText = (input: unknown): string => {
         if (typeof input === 'string') return input;
         if (Array.isArray(input)) return input.map(coerceText).filter(Boolean).join('\n');
@@ -59,27 +96,50 @@ const normalizeSummary = (value: unknown): Summary => {
         return String(input);
     };
 
+    const normalizeText = (text: string) => {
+        const trimmed = text.trim();
+        if (!trimmed) return trimmed;
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            try {
+                const parsed = JSON.parse(sanitizeJsonText(trimmed));
+                return formatParsed(parsed).trim();
+            } catch {
+                return trimmed;
+            }
+        }
+        return trimmed;
+    };
+
     const obj = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
     const casesRaw = obj.cases ?? [];
-    const cases = Array.isArray(casesRaw)
-        ? casesRaw
-              .map(item => {
-                  if (item && typeof item === 'object') {
-                      const record = item as Record<string, unknown>;
-                      return {
-                          name: coerceText(record.name),
-                          reason: coerceText(record.reason),
-                      };
-                  }
-                  return { name: coerceText(item), reason: '' };
-              })
-              .filter(item => item.name || item.reason)
-        : [];
+    let casesArray: unknown[] = [];
+    if (Array.isArray(casesRaw)) {
+        casesArray = casesRaw;
+    } else if (typeof casesRaw === 'string' && (casesRaw.trim().startsWith('[') || casesRaw.trim().startsWith('{'))) {
+        try {
+            const parsed = JSON.parse(sanitizeJsonText(casesRaw));
+            casesArray = Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+            casesArray = [];
+        }
+    }
+    const cases = casesArray
+        .map(item => {
+            if (item && typeof item === 'object') {
+                const record = item as Record<string, unknown>;
+                return {
+                    name: normalizeText(coerceText(record.name)),
+                    reason: normalizeText(coerceText(record.reason)),
+                };
+            }
+            return { name: normalizeText(coerceText(item)), reason: '' };
+        })
+        .filter(item => item.name || item.reason);
 
     return {
-        product: coerceText(obj.product),
-        aiAdvice: coerceText(obj.aiAdvice),
-        userNotes: coerceText(obj.userNotes),
+        product: normalizeText(coerceText(obj.product)),
+        aiAdvice: normalizeText(coerceText(obj.aiAdvice)),
+        userNotes: normalizeText(coerceText(obj.userNotes)),
         cases,
     };
 };
