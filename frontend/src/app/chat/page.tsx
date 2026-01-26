@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useChat } from './useChat';
 import { PhaseIndicator, MessageList, ChatInput, Sidebar } from './components';
+import InviteGate from '@/components/Auth/InviteGate';
 
 export default function ChatPage() {
     const {
@@ -47,39 +48,41 @@ export default function ChatPage() {
     }, [toast]);
 
     return (
-        <div className="h-[calc(100vh-64px)] w-full">
-            <div className="grid h-full max-w-6xl mx-auto w-full lg:grid-cols-[1fr_320px] gap-6 px-4">
-                <div className="flex flex-col">
-                    <PhaseIndicator currentStage={currentStage} />
-                    <MessageList
-                        messages={messages}
-                        messagesEndRef={messagesEndRef}
-                        isUserScrollingRef={isUserScrollingRef}
-                        currentStage={currentStage}
-                    />
-                    <ChatInput
-                        input={input}
-                        setInput={setInput}
-                        isLoading={isLoading}
-                        onSend={handleSend}
-                        onQuickSend={handleQuickSend}
+        <InviteGate>
+            <div className="h-[calc(100vh-64px)] w-full">
+                <div className="grid h-full max-w-6xl mx-auto w-full lg:grid-cols-[1fr_320px] gap-6 px-4">
+                    <div className="flex flex-col">
+                        <PhaseIndicator currentStage={currentStage} />
+                        <MessageList
+                            messages={messages}
+                            messagesEndRef={messagesEndRef}
+                            isUserScrollingRef={isUserScrollingRef}
+                            currentStage={currentStage}
+                        />
+                        <ChatInput
+                            input={input}
+                            setInput={setInput}
+                            isLoading={isLoading}
+                            onSend={handleSend}
+                            onQuickSend={handleQuickSend}
+                            summary={summary}
+                            currentStage={currentStage}
+                        />
+                    </div>
+                    <Sidebar
+                        stageConfig={stageConfig}
                         summary={summary}
+                        isSummarizing={isSummarizing}
                         currentStage={currentStage}
                     />
                 </div>
-                <Sidebar
-                    stageConfig={stageConfig}
-                    summary={summary}
-                    isSummarizing={isSummarizing}
-                    currentStage={currentStage}
-                />
+                {toast ? (
+                    <div className="fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-full bg-black text-white px-4 py-2 text-xs shadow-lg">
+                        <span className="font-semibold">{toast.title}</span>
+                        <span className="ml-2 text-gray-300">{toast.body}</span>
+                    </div>
+                ) : null}
             </div>
-            {toast ? (
-                <div className="fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-full bg-black text-white px-4 py-2 text-xs shadow-lg">
-                    <span className="font-semibold">{toast.title}</span>
-                    <span className="ml-2 text-gray-300">{toast.body}</span>
-                </div>
-            ) : null}
-        </div>
+        </InviteGate>
     );
 }

@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '../../_lib';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
-const normalizeStatus = (status: string) => (status === 'approved' ? 'pending' : status);
+const normalizeStatus = (status: string) => {
+    if (status === 'approved' || status === 'draft') return 'pending';
+    return status;
+};
 
 const mapCmsItem = (row: any) => ({
     id: row.id,

@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
 
-export type CmsStatus = 'draft' | 'pending' | 'published';
+export type CmsStatus = 'pending' | 'published';
 
 export interface CmsItem {
     id: string;

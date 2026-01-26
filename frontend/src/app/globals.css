@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  color-scheme: light dark;
 }
 
 @theme inline {
@@ -17,6 +18,28 @@
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+
+  /* Dark mode overrides for common utility classes */
+  .bg-white { background-color: #0f0f0f; }
+  .bg-gray-50 { background-color: #0b0b0b; }
+  .bg-gray-100 { background-color: #141414; }
+  .bg-gray-200 { background-color: #1f1f1f; }
+  .bg-purple-50 { background-color: #15121f; }
+  .bg-indigo-50 { background-color: #141a2b; }
+  .border-gray-100 { border-color: #1f1f1f; }
+  .border-gray-200 { border-color: #2a2a2a; }
+  .border-purple-100 { border-color: #2a233b; }
+  .text-gray-900 { color: #f5f5f5; }
+  .text-gray-800 { color: #e5e7eb; }
+  .text-gray-700 { color: #cbd5e1; }
+  .text-gray-600 { color: #c7cdd5; }
+  .text-gray-500 { color: #a1a1aa; }
+  .text-gray-400 { color: #8b8b8b; }
+  .text-gray-300 { color: #7a7a7a; }
+  .text-purple-600 { color: #c4b5fd; }
+  .text-purple-800 { color: #ddd6fe; }
+  .text-emerald-600 { color: #6ee7b7; }
+  .text-amber-600 { color: #fcd34d; }
 }
 
 body {
