@@ -82,7 +82,11 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
         heightLeft -= pageHeight;
       }
 
-      const fileName = `ProductThink报告_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.pdf`;
+      const fallbackName = `ProductThink报告_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}`;
+      const productName = summary?.product
+        ? summary.product.split('\n').find(Boolean)?.replace(/[\\/:*?"<>|]/g, '').slice(0, 20)
+        : '';
+      const fileName = `${productName || fallbackName}.pdf`;
       pdf.save(fileName);
     } catch (error) {
       console.error('PDF 生成失败:', error);
@@ -119,12 +123,16 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
   };
 
   return (
-    <div ref={reportRef} className="max-w-4xl mx-auto">
+    <div ref={reportRef} className="max-w-4xl mx-auto px-4 md:px-6">
       {/* 报告头部 */}
       <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white rounded-2xl p-8 mb-6">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold">ProductThink 产品诊断报告</h1>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+              <img src="/bot-avatar.svg" alt="ProductThink" className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">ProductThink 产品诊断报告</h1>
             <p className="text-gray-400 mt-1">
               {new Date().toLocaleDateString('zh-CN', {
                 year: 'numeric',
@@ -132,6 +140,7 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
                 day: 'numeric',
               })}
             </p>
+            </div>
           </div>
           <div className="flex gap-2">
             <button
@@ -215,6 +224,14 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
         <div className="bg-gray-50 rounded-xl p-4">
           <p className="text-gray-700 whitespace-pre-wrap">{summary.product || '暂无产品描述'}</p>
         </div>
+      </div>
+
+      {/* 访问链接 */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
+        <h2 className="text-lg font-bold mb-2">继续体验 ProductThink</h2>
+        <p className="text-sm text-gray-600">
+          点击进入：<span className="font-medium">productthink.vivi.wiki</span>
+        </p>
       </div>
 
       {/* 专家评分 */}
