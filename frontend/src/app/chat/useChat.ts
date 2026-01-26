@@ -92,6 +92,28 @@ const isMeaningful = (text: unknown, minLines: number) => {
     return lines.length >= minLines;
 };
 
+const mergeSummary = (prev: Summary, next: Summary): Summary => {
+    const isBlank = (text: string) => {
+        const normalized = text.trim();
+        return !normalized || normalized.includes('暂无') || normalized.includes('待用户补充');
+    };
+
+    const preferNext = (prevText: string, nextText: string, minLines = 1) => {
+        if (!nextText || isBlank(nextText)) return prevText;
+        if (isMeaningful(nextText, minLines)) return nextText;
+        return prevText;
+    };
+
+    const mergedCases = next.cases && next.cases.length ? next.cases : prev.cases;
+
+    return {
+        product: preferNext(prev.product, next.product, 1),
+        aiAdvice: preferNext(prev.aiAdvice, next.aiAdvice, 1),
+        userNotes: preferNext(prev.userNotes, next.userNotes, 1),
+        cases: mergedCases,
+    };
+};
+
 const MIN_DEEP_TURNS = 3;
 
 // 计算当前阶段
@@ -163,8 +185,17 @@ export function useChat() {
     const shouldScrollRef = useRef(false);
     const isUserScrollingRef = useRef(false);
 
-    // 计算当前阶段（提前计算，供后续使用）
-    const currentStage = computeStage(summary, deepTurns);
+    const stageOrder: Stage[] = ['info', 'deep', 'analysis'];
+    const [currentStage, setCurrentStage] = useState<Stage>('info');
+
+    useEffect(() => {
+        const nextStage = computeStage(summary, deepTurns);
+        const currentIndex = stageOrder.indexOf(currentStage);
+        const nextIndex = stageOrder.indexOf(nextStage);
+        if (nextIndex > currentIndex) {
+            setCurrentStage(nextStage);
+        }
+    }, [summary, deepTurns, currentStage]);
 
     // 阶段切换埋点
     useEffect(() => {
@@ -178,7 +209,7 @@ export function useChat() {
         if (!isUserScrollingRef.current) {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
-    }, []);
+    }, [deepTurns, summary]);
 
     // 只在需要时滚动（用户发送消息后）
     useEffect(() => {
@@ -203,11 +234,12 @@ export function useChat() {
 
             const data = await response.json();
             if (data?.summary) {
-                const newSummary = normalizeSummary(data.summary);
-                setSummary(newSummary);
+                const incoming = normalizeSummary(data.summary);
+                const merged = mergeSummary(summary, incoming);
+                setSummary(merged);
                 // 保存对话到数据库
-                const newStage = computeStage(newSummary, deepTurns);
-                void saveConversation(snapshot, newSummary, newStage);
+                const newStage = computeStage(merged, deepTurns);
+                void saveConversation(snapshot, merged, newStage);
             }
         } catch (error) {
             console.error('Error calling summary API:', error);
