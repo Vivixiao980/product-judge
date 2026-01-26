@@ -30,7 +30,7 @@ export function ChatInput({ input, setInput, isLoading, onSend, onQuickSend, sum
     };
 
     return (
-        <div className="p-4 bg-white border-t border-gray-100">
+        <div className="sticky bottom-0 z-10 border-t border-gray-100 bg-white/95 backdrop-blur p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
             <div className="text-xs text-gray-500 mb-2">
                 {currentStage === 'info' && 'Step 1：先帮我把产品轮廓讲清楚～'}
                 {currentStage === 'deep' && 'Step 2：我会追问关键假设，一起把问题想清楚'}

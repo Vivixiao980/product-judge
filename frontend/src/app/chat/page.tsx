@@ -49,9 +49,9 @@ export default function ChatPage() {
 
     return (
         <InviteGate>
-            <div className="h-[calc(100vh-64px)] w-full">
+            <div className="h-[calc(100dvh-64px)] min-h-[calc(100dvh-64px)] w-full">
                 <div className="grid h-full max-w-6xl mx-auto w-full lg:grid-cols-[1fr_320px] gap-6 px-4">
-                    <div className="flex flex-col">
+                    <div className="flex flex-col min-h-0">
                         <PhaseIndicator currentStage={currentStage} />
                         <MessageList
                             messages={messages}
