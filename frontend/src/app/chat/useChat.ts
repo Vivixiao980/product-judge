@@ -114,7 +114,7 @@ const mergeSummary = (prev: Summary, next: Summary): Summary => {
     };
 };
 
-const MIN_DEEP_TURNS = 3;
+const MIN_DEEP_TURNS = 2;
 
 // 计算当前阶段
 const computeStage = (summary: Summary, deepTurns: number): Stage => {
