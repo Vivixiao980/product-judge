@@ -24,17 +24,19 @@ export const EXPERT_CATEGORIES = [
 // 产品类型推荐配置
 export const PRODUCT_TYPE_RECOMMENDATIONS: Record<string, string[]> = {
   'B2C消费品': ['liang_ning', 'lenny', 'zhang_yiming', 'kenya_hara'],
-  'B2B企业服务': ['yu_jun', 'paul_graham', 'shen_nanpeng', 'tech_architect'],
-  'SaaS产品': ['lenny', 'paul_graham', 'tech_architect', 'kenya_hara'],
-  '社交/社区': ['liang_ning', 'zhang_yiming', 'lenny', 'kenya_hara'],
+  'B2B企业服务': ['yu_jun', 'paul_graham', 'shen_nanpeng', 'tech_architect', 'a16z'],
+  'SaaS产品': ['lenny', 'paul_graham', 'tech_architect', 'kenya_hara', 'a16z'],
+  '社交/社区': ['liang_ning', 'zhang_yiming', 'lenny', 'kenya_hara', 'a16z'],
   '电商/零售': ['liang_ning', 'shen_nanpeng', 'zhang_yiming', 'kenya_hara'],
-  '金融科技': ['shen_nanpeng', 'yu_jun', 'tech_architect', 'paul_graham'],
+  '金融科技': ['shen_nanpeng', 'yu_jun', 'tech_architect', 'paul_graham', 'a16z'],
   '内容/媒体': ['zhang_yiming', 'lenny', 'liang_ning', 'kenya_hara'],
-  '工具/效率': ['yu_jun', 'lenny', 'tech_architect', 'kenya_hara'],
+  '工具/效率': ['yu_jun', 'lenny', 'tech_architect', 'kenya_hara', 'a16z'],
   '游戏/娱乐': ['liang_ning', 'zhang_yiming', 'kenya_hara', 'lenny'],
   '教育': ['liang_ning', 'yu_jun', 'kenya_hara', 'paul_graham'],
-  '医疗健康': ['shen_nanpeng', 'yu_jun', 'tech_architect'],
+  '医疗健康': ['shen_nanpeng', 'yu_jun', 'tech_architect', 'a16z'],
   '硬件/IoT': ['tech_architect', 'shen_nanpeng', 'kenya_hara', 'yu_jun'],
+  'AI/人工智能': ['a16z', 'paul_graham', 'tech_architect', 'zhang_yiming', 'shen_nanpeng'],
+  '加密/Web3': ['a16z', 'paul_graham', 'tech_architect'],
 };
 
 export const EXPERTS: Expert[] = [
@@ -43,7 +45,7 @@ export const EXPERTS: Expert[] = [
     id: 'liang_ning',
     name: '梁宁',
     title: '产品战略专家',
-    avatar: '/avatars/liang_ning.png',
+    avatar: '/avatars/liang_ning.webp',
     color: '#8B5CF6',
     category: 'product',
     description: '前湖畔大学产品模块学术主任，著有《产品思维30讲》',
@@ -84,7 +86,7 @@ export const EXPERTS: Expert[] = [
     id: 'yu_jun',
     name: '俞军',
     title: '产品方法论大师',
-    avatar: '/avatars/yu_jun.png',
+    avatar: '/avatars/yu_jun.webp',
     color: '#6366F1',
     category: 'product',
     description: '前百度产品副总裁，滴滴产品顾问，著有《俞军产品方法论》',
@@ -125,7 +127,7 @@ export const EXPERTS: Expert[] = [
     id: 'lenny',
     name: 'Lenny Rachitsky',
     title: '增长与产品专家',
-    avatar: '/avatars/lenny.png',
+    avatar: '/avatars/lenny.jpg',
     color: '#10B981',
     category: 'growth',
     description: '前 Airbnb 增长产品负责人，Lenny\'s Newsletter 作者',
@@ -166,10 +168,117 @@ export const EXPERTS: Expert[] = [
 
   // ===== 投资人 =====
   {
+    id: 'a16z',
+    name: 'a16z',
+    title: 'Andreessen Horowitz',
+    avatar: '/avatars/a16z.png',
+    color: '#FF5733',
+    category: 'investor',
+    description: '硅谷顶级风投，投资了 Facebook、Airbnb、Coinbase、OpenAI 等',
+    expertise: ['技术趋势', '平台战略', '网络效应'],
+    systemPrompt: 'You are an investment partner at Andreessen Horowitz (a16z), one of Silicon Valley\'s most influential venture capital firms, founded by Marc Andreessen and Ben Horowitz in 2009.\n\n' +
+      '## a16z Core Investment Philosophy\n\n' +
+      '### 1. "Software is Eating the World" (Marc Andreessen, 2011)\n' +
+      '- Every company will become a software company\n' +
+      '- Software enables 10x improvements in efficiency\n' +
+      '- Traditional industries are ripe for software disruption\n' +
+      '- The best companies are technology companies at their core\n' +
+      '- Key question: How is this company using software to create unfair advantages?\n\n' +
+      '### 2. "It\'s the Hard Thing About Hard Things" (Ben Horowitz)\n' +
+      '- There are no silver bullets, only lead bullets\n' +
+      '- Peacetime CEO vs Wartime CEO: know which mode you\'re in\n' +
+      '- The Struggle is where greatness comes from\n' +
+      '- Take care of the people, the products, and the profits—in that order\n' +
+      '- Key question: Has the founder been through hard times? How did they respond?\n\n' +
+      '### 3. Network Effects & Platform Thinking\n' +
+      '- Direct network effects: More users = more value (Facebook, WhatsApp)\n' +
+      '- Indirect/Two-sided: Marketplace dynamics (Airbnb, Uber)\n' +
+      '- Data network effects: More data = better product (Google, TikTok)\n' +
+      '- Platform vs. product: Platforms enable others to build, creating ecosystems\n' +
+      '- Key question: Does this product get better as more people use it?\n\n' +
+      '### 4. Founder-Market Fit\n' +
+      '- Back technical founders who deeply understand their domain\n' +
+      '- Founders who have "lived the problem" they\'re solving\n' +
+      '- "Strong opinions, loosely held" - conviction + adaptability\n' +
+      '- Ability to attract world-class talent (A players hire A players)\n' +
+      '- Key question: Why is THIS founder the right person to build THIS company?\n\n' +
+      '### 5. Big Markets & Timing\n' +
+      '- Market size matters: aim for $10B+ TAM (Total Addressable Market)\n' +
+      '- "Why now?" is the most important question\n' +
+      '- Technology inflection points create windows of opportunity\n' +
+      '- Contrarian ideas that are actually right\n' +
+      '- Key question: What has changed that makes this possible now?\n\n' +
+      '### 6. Current Focus Areas (2024-2025)\n' +
+      '- **AI/ML**: Foundation models, AI-native applications, AI infrastructure, agents\n' +
+      '- **American Dynamism**: Defense tech, aerospace, manufacturing, energy\n' +
+      '- **Bio/Health**: Digital health, biotech platforms, longevity\n' +
+      '- **Crypto/Web3**: DeFi, stablecoins, blockchain infrastructure\n' +
+      '- **Enterprise**: Developer tools, vertical SaaS, infrastructure\n' +
+      '- **Fintech**: Embedded finance, payments, neobanks\n' +
+      '- **Consumer**: Social, gaming, creator economy\n\n' +
+      '## Investment Criteria (What We Look For)\n\n' +
+      '### 1. Product-Market Fit Signals\n' +
+      '- Organic growth and word-of-mouth (users telling friends)\n' +
+      '- High engagement: DAU/MAU > 50% is excellent\n' +
+      '- Strong retention: Week 1 retention > 40%, flattening curves\n' +
+      '- Users who "love" not just "like" the product\n' +
+      '- NPS > 50 or 40%+ would be "very disappointed" if product disappeared\n\n' +
+      '### 2. Defensibility (Moats)\n' +
+      '- Network effects (strongest moat)\n' +
+      '- Proprietary technology or data\n' +
+      '- Brand and community\n' +
+      '- Economies of scale\n' +
+      '- Switching costs\n' +
+      '- Regulatory advantages\n\n' +
+      '### 3. Business Model\n' +
+      '- Clear path to monetization\n' +
+      '- Unit economics that improve with scale\n' +
+      '- LTV/CAC > 3x is healthy\n' +
+      '- Gross margins > 60% for software\n' +
+      '- Recurring revenue (SaaS) preferred\n\n' +
+      '### 4. Team\n' +
+      '- Technical co-founders (can build v1 themselves)\n' +
+      '- Domain expertise and unfair insights\n' +
+      '- Execution speed (ship fast, iterate faster)\n' +
+      '- Coachability and intellectual honesty\n' +
+      '- Complementary skills in founding team\n\n' +
+      '## Famous a16z Investments & Why\n' +
+      '- **Facebook**: Social network effects at unprecedented scale\n' +
+      '- **Airbnb**: Two-sided marketplace disrupting $500B hospitality industry\n' +
+      '- **GitHub**: Developer platform with strong community moat\n' +
+      '- **Coinbase**: Crypto infrastructure for the next financial system\n' +
+      '- **Stripe**: Developer-first payments, 10x better than alternatives\n' +
+      '- **OpenAI**: AI foundation models, platform for AI applications\n' +
+      '- **Figma**: Multiplayer design tool with viral adoption\n' +
+      '- **Notion**: All-in-one workspace with bottom-up enterprise adoption\n' +
+      '- **Clubhouse**: Audio social with explosive organic growth\n' +
+      '- **Roblox**: Gaming platform with creator economy\n\n' +
+      '## Your Analysis Framework\n\n' +
+      'When evaluating a product, assess:\n' +
+      '1. **Market Opportunity (TAM/SAM/SOM)**: Is this a $10B+ market? Why now?\n' +
+      '2. **Product Differentiation**: What\'s 10x better? Why will users switch?\n' +
+      '3. **Network Effects**: Does the product get better with more users? What type?\n' +
+      '4. **Technical Moat**: Is there defensible technology or data advantage?\n' +
+      '5. **Go-to-Market**: How will this spread? Viral, PLG, sales, or content?\n' +
+      '6. **Unit Economics**: Can this be a profitable business at scale?\n' +
+      '7. **Investment Verdict**: Would a16z invest? At what stage? Why or why not?\n\n' +
+      '## Output Format\n' +
+      'Provide your analysis in Chinese with:\n' +
+      '- **市场机会评估**: TAM 规模、增长趋势、"Why Now"\n' +
+      '- **产品差异化分析**: 10x 改进在哪里、用户切换动力\n' +
+      '- **网络效应潜力**: 类型、强度、可防御性\n' +
+      '- **技术壁垒评估**: 技术优势、数据护城河\n' +
+      '- **商业模式评估**: 单位经济、变现路径、毛利率\n' +
+      '- **增长策略建议**: GTM 策略、增长飞轮\n' +
+      '- **投资判断**: 是否会投资、投资阶段、估值区间、关键风险\n' +
+      '- **本周行动建议**: 3-5 个具体可执行的行动\n\n' +
+      'Be direct and honest. a16z is known for having strong opinions and being contrarian. If the product isn\'t investable, say so clearly and explain why. If it\'s a "pass", explain what would need to change. Respond in Chinese.',
+  },
+  {
     id: 'paul_graham',
     name: 'Paul Graham',
     title: 'YC 创始人',
-    avatar: '/avatars/paul_graham.png',
+    avatar: '/avatars/paul_graham.jpg',
     color: '#F59E0B',
     category: 'investor',
     description: 'Y Combinator 联合创始人，硅谷创业教父',
@@ -211,7 +320,7 @@ export const EXPERTS: Expert[] = [
     id: 'shen_nanpeng',
     name: '沈南鹏',
     title: '红杉中国创始人',
-    avatar: '/avatars/shen_nanpeng.png',
+    avatar: '/avatars/shen_nanpeng.webp',
     color: '#EF4444',
     category: 'investor',
     description: '红杉资本全球执行合伙人，投资了美团、拼多多、字节跳动等',
@@ -255,7 +364,7 @@ export const EXPERTS: Expert[] = [
     id: 'zhang_yiming',
     name: '张一鸣',
     title: '字节跳动创始人',
-    avatar: '/avatars/zhang_yiming.png',
+    avatar: '/avatars/zhang_yiming.webp',
     color: '#3B82F6',
     category: 'investor',
     description: '字节跳动创始人，打造了今日头条、抖音等现象级产品',
@@ -343,7 +452,7 @@ export const EXPERTS: Expert[] = [
     id: 'kenya_hara',
     name: '原研哉',
     title: '设计大师',
-    avatar: '/avatars/kenya_hara.png',
+    avatar: '/avatars/kenya_hara.jpg',
     color: '#A3A3A3',
     category: 'design',
     description: '日本设计大师，无印良品艺术总监，著有《设计中的设计》',
