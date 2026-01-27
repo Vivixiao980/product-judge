@@ -65,9 +65,9 @@ export function ChatMessage({ message, currentStage }: ChatMessageProps) {
                     <User size={16} />
                 ) : (
                     <img
-                        src="/bot-avatar.svg"
+                        src="/avatars/bot-avatar.jpg"
                         alt="产品顾问"
-                        className="w-5 h-5"
+                        className="w-5 h-5 rounded-full object-cover"
                     />
                 )}
             </div>

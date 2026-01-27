@@ -32,7 +32,7 @@ export function ExpertSelector({ summary, onStartAnalysis }: ExpertSelectorProps
   });
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [personas, setPersonas] = useState<TargetUserPersona[]>([]);
-  const [selectedPersonaId, setSelectedPersonaId] = useState<string>('');
+  const [selectedPersonaIds, setSelectedPersonaIds] = useState<string[]>([]);
   const [personaLoading, setPersonaLoading] = useState(false);
   const [personaError, setPersonaError] = useState('');
 
@@ -55,8 +55,13 @@ export function ExpertSelector({ summary, onStartAnalysis }: ExpertSelectorProps
 
   const handleStart = () => {
     if (selectedExperts.length === 0) return;
-    const selectedPersona = personas.find(p => p.id === selectedPersonaId);
-    onStartAnalysis(selectedExperts, productType, userGoal, selectedPersona?.shortBio || selectedPersona?.scenario);
+    const selectedList = personas.filter(p => selectedPersonaIds.includes(p.id));
+    const targetUserDescription = selectedList.length
+      ? selectedList
+          .map(p => `${p.name}·${p.role}：${p.shortBio || p.scenario}`)
+          .join('\n')
+      : undefined;
+    onStartAnalysis(selectedExperts, productType, userGoal, targetUserDescription);
   };
 
   const loadPersonas = async () => {
@@ -76,7 +81,7 @@ export function ExpertSelector({ summary, onStartAnalysis }: ExpertSelectorProps
       const list = Array.isArray(data.personas) ? data.personas : [];
       setPersonas(list);
       if (list.length > 0) {
-        setSelectedPersonaId(list[0].id);
+        setSelectedPersonaIds([list[0].id]);
       }
     } catch (error) {
       setPersonaError(error instanceof Error ? error.message : '生成失败');
@@ -201,7 +206,7 @@ export function ExpertSelector({ summary, onStartAnalysis }: ExpertSelectorProps
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="text-lg font-bold">目标用户画像</h2>
-            <p className="text-sm text-gray-500 mt-1">先生成画像，再选择你认为最贴近的用户</p>
+            <p className="text-sm text-gray-500 mt-1">先生成画像，再选择你认为最贴近的用户（可多选）</p>
           </div>
           <button
             type="button"
@@ -225,9 +230,15 @@ export function ExpertSelector({ summary, onStartAnalysis }: ExpertSelectorProps
               <button
                 key={p.id}
                 type="button"
-                onClick={() => setSelectedPersonaId(p.id)}
+                onClick={() =>
+                  setSelectedPersonaIds((prev) =>
+                    prev.includes(p.id)
+                      ? prev.filter((id) => id !== p.id)
+                      : [...prev, p.id]
+                  )
+                }
                 className={`text-left rounded-xl border p-4 transition ${
-                  selectedPersonaId === p.id ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'
+                  selectedPersonaIds.includes(p.id) ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 <div className="font-medium text-gray-900">{p.name} · {p.role}</div>
