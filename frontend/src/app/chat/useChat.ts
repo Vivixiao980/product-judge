@@ -193,6 +193,26 @@ const normalizeSummary = (value: unknown): Summary => {
         }
         return [item];
     });
+    if (!cases.length && typeof casesRaw === 'string') {
+        const lines = casesRaw
+            .replace(/[\[\]{}"]/g, '')
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean);
+        const cleaned: { name: string; reason: string }[] = [];
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.length <= 2) continue;
+            const next = lines[i + 1] || '';
+            if (next && next.length > 4 && !next.includes('推荐') && !next.includes('案例')) {
+                cleaned.push({ name: line, reason: next });
+                i += 1;
+            } else {
+                cleaned.push({ name: line, reason: '' });
+            }
+        }
+        cases = cleaned;
+    }
 
     return {
         product: normalizeLines(normalizeText(coerceText(obj.product)), 6),
