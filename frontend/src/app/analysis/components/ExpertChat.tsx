@@ -34,28 +34,27 @@ export function ExpertChat({ analysis }: ExpertChatProps) {
   const stripAnalysisJson = (raw: string) => {
     if (!raw) return '';
     let cleaned = raw.replace(/```json[\s\S]*?```/g, '');
-    cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
-    cleaned = cleaned.replace(/\{[\s\S]*"score"[\s\S]*\}/g, '');
+    cleaned = cleaned.replace(/\n?\{[\s\S]*"score"[\s\S]*\}\s*$/g, '');
     return cleaned.trim();
   };
 
   const formatSections = (raw: string) => {
     if (!raw) return '';
     const lines = raw.split('\n').map(l => l.trim());
-    const headingKeywords = [
-      '战略分析',
-      '产品分析',
-      '具体建议',
-      'MVP验证方向',
-      '种子用户获取',
-      '风险',
-      '建议',
-      '优势',
-      '评分',
-      '行动建议',
-      '结论',
-      '总结',
-    ];
+    const headingKeywords: Record<string, string> = {
+      '战略分析': '🧭',
+      '产品分析': '🧩',
+      '具体建议': '✅',
+      'MVP验证方向': '🔬',
+      '种子用户获取': '🎯',
+      '风险': '⚠️',
+      '建议': '💡',
+      '优势': '🌟',
+      '评分': '⭐',
+      '行动建议': '📝',
+      '结论': '📌',
+      '总结': '📎',
+    };
 
     const formatted: string[] = [];
     for (const line of lines) {
@@ -64,17 +63,19 @@ export function ExpertChat({ analysis }: ExpertChatProps) {
         continue;
       }
       const normalized = line.replace(/[:：]\s*$/, '');
-      if (headingKeywords.includes(normalized)) {
-        formatted.push(`**${normalized}**`);
-        formatted.push('');
-      } else if (headingKeywords.some(k => line.startsWith(k))) {
-        const head = headingKeywords.find(k => line.startsWith(k));
-        const rest = line.slice(head!.length).replace(/^[:：]\s*/, '');
-        formatted.push(`**${head}**`);
-        if (rest) formatted.push(rest);
+      if (headingKeywords[normalized]) {
+        formatted.push(`**${headingKeywords[normalized]} ${normalized}**`);
         formatted.push('');
       } else {
-        formatted.push(line);
+        const matched = Object.keys(headingKeywords).find(k => line.startsWith(k));
+        if (matched) {
+          const rest = line.slice(matched.length).replace(/^[:：]\s*/, '');
+          formatted.push(`**${headingKeywords[matched]} ${matched}**`);
+          if (rest) formatted.push(rest);
+          formatted.push('');
+        } else {
+          formatted.push(line);
+        }
       }
     }
     return formatted.join('\n');
@@ -124,23 +125,23 @@ export function ExpertChat({ analysis }: ExpertChatProps) {
         )}
 
         {(analysis.status === 'analyzing' || analysis.status === 'completed') && (
-          <div className="prose prose-sm max-w-none text-gray-700 prose-pre:whitespace-pre-wrap prose-pre:break-words">
+          <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed prose-pre:whitespace-pre-wrap prose-pre:break-words">
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkBreaks]}
               components={{
                 pre: ({ children }) => (
-                  <pre className="whitespace-pre-wrap break-words overflow-x-auto bg-gray-50 p-3 rounded text-gray-600">
+                  <pre className="whitespace-pre-wrap break-words overflow-x-auto bg-gray-50 p-3 rounded text-gray-600 leading-relaxed">
                     {children}
                   </pre>
                 ),
                 code: ({ children, className }) => {
                   const isBlock = className?.includes('language-');
                   return isBlock ? (
-                    <code className="font-mono text-[0.85em] whitespace-pre-wrap break-words text-gray-700">
+                    <code className="font-mono text-[0.9em] whitespace-pre-wrap break-words text-gray-700 leading-relaxed">
                       {children}
                     </code>
                   ) : (
-                    <code className="px-1 py-0.5 rounded bg-gray-100 font-mono text-[0.85em] text-gray-700">
+                    <code className="px-1 py-0.5 rounded bg-gray-100 font-mono text-[0.9em] text-gray-700">
                       {children}
                     </code>
                   );
