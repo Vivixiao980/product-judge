@@ -46,13 +46,16 @@ export default function InsightCard({ card, onClick }: InsightCardProps) {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-50">
-                <div className="text-xs text-gray-500 max-w-[55%] truncate">
+            <div className="flex items-start justify-between gap-3 mt-auto pt-4 border-t border-gray-50">
+                <div className="text-xs text-gray-500 flex-1 min-w-0 truncate">
                     {card.source ? `来源：${card.source}` : `— ${card.author}`}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap justify-end gap-1.5 max-w-[45%]">
                     {card.tags.slice(0, 3).map(tag => (
-                        <span key={tag} className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                        <span
+                            key={tag}
+                            className="text-[11px] text-gray-500 bg-gray-100/70 px-2 py-0.5 rounded-full border border-gray-200/60 whitespace-nowrap"
+                        >
                             #{tag}
                         </span>
                     ))}

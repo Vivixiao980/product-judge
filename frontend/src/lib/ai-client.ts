@@ -12,6 +12,7 @@ interface AIRequestOptions {
   messages: Message[];
   stream?: boolean;
   model?: string;
+  preferredProvider?: 'VectorEngine' | 'OpenRouter';
 }
 
 interface AIProvider {
@@ -22,7 +23,7 @@ interface AIProvider {
   headers: Record<string, string>;
 }
 
-function getProviders(): AIProvider[] {
+function getProviders(preferredProvider?: AIRequestOptions['preferredProvider']): AIProvider[] {
   const providers: AIProvider[] = [];
 
   // 优先使用 VectorEngine
@@ -31,7 +32,7 @@ function getProviders(): AIProvider[] {
       name: 'VectorEngine',
       baseUrl: 'https://api.vectorengine.ai/v1/chat/completions',
       apiKey: process.env.VECTORENGINE_API_KEY,
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-5-20250929',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -53,6 +54,12 @@ function getProviders(): AIProvider[] {
     });
   }
 
+  if (preferredProvider) {
+    return providers
+      .filter(p => p.name === preferredProvider)
+      .concat(providers.filter(p => p.name !== preferredProvider));
+  }
+
   return providers;
 }
 
@@ -60,7 +67,7 @@ export async function createAICompletion(options: AIRequestOptions): Promise<{
   response: Response;
   provider: string;
 }> {
-  const providers = getProviders();
+  const providers = getProviders(options.preferredProvider);
 
   if (providers.length === 0) {
     throw new Error('No AI API key configured');

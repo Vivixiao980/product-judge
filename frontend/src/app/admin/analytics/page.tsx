@@ -74,6 +74,7 @@ interface Conversation {
   id: string;
   session_id: string;
   ip_address?: string;
+  invite_code?: string;
   messages: Array<{ role: string; content: string }>;
   summary: Record<string, unknown>;
   stage: string;
@@ -223,7 +224,8 @@ export default function AnalyticsPage() {
     const q = searchQuery.trim().toLowerCase();
     return conversations.filter((conv) =>
       conv.session_id.toLowerCase().includes(q) ||
-      (conv.ip_address || '').toLowerCase().includes(q)
+      (conv.ip_address || '').toLowerCase().includes(q) ||
+      (conv.invite_code || '').toLowerCase().includes(q)
     );
   }, [conversations, searchQuery]);
 
@@ -320,6 +322,11 @@ export default function AnalyticsPage() {
                   {selectedConversation.ip_address ? (
                     <p className="text-sm text-gray-500">
                       IP: {selectedConversation.ip_address}
+                    </p>
+                  ) : null}
+                  {selectedConversation.invite_code ? (
+                    <p className="text-sm text-gray-500">
+                      邀请码: {selectedConversation.invite_code}
                     </p>
                   ) : null}
                   <p className="text-sm text-gray-500">
@@ -868,6 +875,11 @@ export default function AnalyticsPage() {
                             {conv.stage === 'analysis' ? '多视角分析' :
                              conv.stage === 'deep' ? '深度追问' : '信息收集'}
                           </span>
+                          {conv.invite_code ? (
+                            <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
+                              邀请码：{conv.invite_code}
+                            </span>
+                          ) : null}
                           <span className="text-sm text-gray-500">{conv.message_count} 条消息</span>
                         </div>
                         {conv.ip_address ? (

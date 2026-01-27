@@ -27,8 +27,16 @@ async function getKnowledgeContext(query: string): Promise<string> {
     return '';
 }
 
+const resolvePreferredProvider = (inviteCode?: string) => {
+    const normalized = (inviteCode || '').trim().toLowerCase();
+    if (normalized === 'productthink') return 'OpenRouter';
+    if (normalized === 'vivi') return 'VectorEngine';
+    return undefined;
+};
+
 export async function POST(req: NextRequest) {
-    const { messages } = await req.json();
+    const { messages, inviteCode } = await req.json();
+    const preferredProvider = resolvePreferredProvider(inviteCode);
 
     // 构建更完整的查询：结合最近几轮对话内容
     const recentMessages = messages.slice(-6); // 最近 3 轮对话
@@ -71,9 +79,10 @@ ${knowledgeContext}
         const { response, provider } = await createAICompletion({
             messages: aiMessages,
             stream: true,
+            preferredProvider,
         });
 
-        console.log(`[Chat API] Using provider: ${provider}`);
+        console.log(`[Chat API] Using provider: ${provider}`, { inviteCode, preferredProvider });
 
         if (!response.body) {
             return new Response(JSON.stringify({ error: 'No response stream' }), { status: 500 });

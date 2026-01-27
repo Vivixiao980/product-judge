@@ -58,8 +58,8 @@ export function ChatMessage({ message, currentStage }: ChatMessageProps) {
             )}
         >
             <div className={clsx(
-                "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                isUser ? "bg-black text-white" : "bg-blue-100 text-blue-600"
+                "w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
+                isUser ? "bg-black text-white" : "bg-transparent"
             )}>
                 {isUser ? (
                     <User size={16} />
@@ -67,7 +67,7 @@ export function ChatMessage({ message, currentStage }: ChatMessageProps) {
                     <img
                         src="/avatars/bot-avatar.jpg"
                         alt="产品顾问"
-                        className="w-5 h-5 rounded-full object-cover"
+                        className="w-full h-full object-cover"
                     />
                 )}
             </div>

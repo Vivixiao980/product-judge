@@ -25,7 +25,7 @@ function extractAnalysisResult(text: string): {
   actionItems: string[];
 } {
   const defaultResult = {
-    score: 7,
+    score: 5,
     strengths: [],
     risks: [],
     suggestions: [],
@@ -46,7 +46,7 @@ function extractAnalysisResult(text: string): {
     try {
       const parsed = JSON.parse(sanitizeJson(raw));
       return {
-        score: parsed.score || 7,
+        score: parsed.score || 5,
         strengths: parsed.strengths || [],
         risks: parsed.risks || [],
         suggestions: parsed.suggestions || [],
@@ -82,6 +82,30 @@ function extractAnalysisResult(text: string): {
 
 export function useAnalysis(summary: Summary) {
   const [state, setState] = useState<AnalysisState>(initialState);
+  const ALLOWED_SCORES = [0, 2, 5, 8, 10];
+
+  const snapScore = (score: number) => {
+    if (Number.isNaN(score)) return 5;
+    let closest = ALLOWED_SCORES[0];
+    let minDiff = Math.abs(score - closest);
+    for (const candidate of ALLOWED_SCORES) {
+      const diff = Math.abs(score - candidate);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = candidate;
+      }
+    }
+    return closest;
+  };
+
+  const clampScore = (score: number, cap: number) => {
+    const snapped = snapScore(score);
+    const limit = snapScore(cap);
+    const allowedUnderCap = ALLOWED_SCORES.filter(value => value <= limit);
+    return allowedUnderCap.length ? Math.min(snapped, allowedUnderCap[allowedUnderCap.length - 1]) : 0;
+  };
+
+  const snapOverallScore = (score: number) => snapScore(score);
 
   const detectCaseMention = (text: string) => {
     const normalized = text.replace(/\s+/g, '');
@@ -103,10 +127,10 @@ export function useAnalysis(summary: Summary) {
     if (hasCases) clarity += 1;
 
     // 0-2: 极不清晰; 3-4: 较模糊; 5-6: 基本清晰
-    if (clarity <= 2) return 5.5;
-    if (clarity <= 4) return 6.4;
-    if (clarity <= 6) return 7.4;
-    return 8.4;
+    if (clarity <= 2) return 2;
+    if (clarity <= 4) return 5;
+    if (clarity <= 6) return 8;
+    return 10;
   };
 
   const startAnalysis = useCallback(
@@ -195,7 +219,7 @@ export function useAnalysis(summary: Summary) {
           // 提取结构化结果
           const result = extractAnalysisResult(fullText);
           const cap = computeClarityCap(summary);
-          const adjustedScore = Math.min(result.score, cap);
+          const adjustedScore = clampScore(result.score, cap);
           const needsCaseSupplement = !detectCaseMention(fullText) && !(summary.cases || []).length;
 
           // 更新完成状态
@@ -232,10 +256,11 @@ export function useAnalysis(summary: Summary) {
       // 计算综合评分
       setState((prev) => {
         const completedAnalyses = prev.analyses.filter((a) => a.status === 'completed');
-        const overallScore =
+        const overallRaw =
           completedAnalyses.length > 0
             ? completedAnalyses.reduce((sum, a) => sum + a.score, 0) / completedAnalyses.length
             : 0;
+        const overallScore = snapOverallScore(overallRaw);
 
         return {
           ...prev,

@@ -3,8 +3,14 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { Lock } from 'lucide-react';
 
-const INVITE_CODE = process.env.NEXT_PUBLIC_INVITE_CODE || 'productthink';
+const DEFAULT_INVITE_CODES = ['productthink', 'vivi'];
+const INVITE_CODES = (process.env.NEXT_PUBLIC_INVITE_CODES || '')
+  .split(',')
+  .map(code => code.trim().toLowerCase())
+  .filter(Boolean);
+const ALLOWED_CODES = INVITE_CODES.length ? INVITE_CODES : DEFAULT_INVITE_CODES;
 const STORAGE_KEY = 'invite_verified';
+const STORAGE_CODE_KEY = 'invite_code';
 
 interface InviteGateProps {
   children: ReactNode;
@@ -22,8 +28,10 @@ export default function InviteGate({ children }: InviteGateProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (code.trim().toLowerCase() === INVITE_CODE.toLowerCase()) {
+    const normalized = code.trim().toLowerCase();
+    if (ALLOWED_CODES.includes(normalized)) {
       localStorage.setItem(STORAGE_KEY, 'true');
+      localStorage.setItem(STORAGE_CODE_KEY, normalized);
       setIsVerified(true);
       setError('');
     } else {

@@ -23,11 +23,17 @@ const getSessionId = (): string => {
     return sessionId;
 };
 
+const getInviteCode = (): string => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem('invite_code') || '';
+};
+
 // 保存对话到数据库
 const saveConversation = async (
     messages: { role: string; content: string }[],
     summary: Summary,
-    stage: Stage
+    stage: Stage,
+    inviteCode?: string
 ) => {
     try {
         await fetch('/api/conversation', {
@@ -38,6 +44,7 @@ const saveConversation = async (
                 messages: messages.map(m => ({ role: m.role, content: m.content })),
                 summary,
                 stage,
+                inviteCode,
             }),
         });
     } catch (error) {
@@ -114,18 +121,35 @@ const normalizeSummary = (value: unknown): Summary => {
                 return quoted || trimmed;
             }
         }
-        return trimmed;
+        return trimmed
+            .replace(/^[\s"'`{[\]]+/, '')
+            .replace(/[\s"'`\]}]+$/, '')
+            .replace(/,+\s*$/g, '')
+            .replace(/^\s*}\s*,?\s*$/g, '')
+            .replace(/^\s*"\s*/g, '')
+            .replace(/\s*"\s*$/g, '')
+            .trim();
     };
     const normalizeLines = (text: string, maxLines: number) => {
+        const normalizeLine = (line: string) =>
+            line
+                .replace(/^[-•]\s*/g, '')
+                .replace(/^"+/, '')
+                .replace(/"+$/, '')
+                .replace(/,+\s*$/g, '')
+                .trim();
         const lines = text
             .split('\n')
-            .map(line => line.trim())
-            .filter(Boolean);
+            .map(line => normalizeLine(line))
+            .filter(Boolean)
+            .filter(line => !/^[\s\]\[{}"']+$/.test(line))
+            .filter(line => line !== '},' && line !== '}' && line !== '{');
         const seen = new Set<string>();
         const deduped: string[] = [];
         for (const line of lines) {
-            if (seen.has(line)) continue;
-            seen.add(line);
+            const key = line.replace(/\s+/g, ' ').toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
             deduped.push(line);
         }
         return deduped.slice(0, maxLines).join('\n');
@@ -251,6 +275,7 @@ const mergeSummary = (prev: Summary, next: Summary): Summary => {
         if (!prevText || isBlank(prevText)) return nextText;
         if (!isMeaningful(nextText, minLines)) return prevText;
         if (prevText.includes(nextText)) return prevText;
+        if (nextText.includes(prevText)) return nextText;
 
         const prevLines = stripPlaceholders(prevText);
         const nextLines = stripPlaceholders(nextText);
@@ -260,12 +285,40 @@ const mergeSummary = (prev: Summary, next: Summary): Summary => {
             return nextLines.slice(0, maxLines).join('\n');
         }
 
-        const combined = [...prevLines, ...nextLines];
+        const normalizeKey = (line: string) =>
+            line
+                .replace(/^[-•]\s*/g, '')
+                .replace(/^"+/, '')
+                .replace(/"+$/, '')
+                .replace(/,+\s*$/g, '')
+                .replace(/\s+/g, ' ')
+                .toLowerCase()
+                .trim();
+
+        const prevKeys = new Set(prevLines.map(normalizeKey).filter(Boolean));
+        const nextKeys = new Set(nextLines.map(normalizeKey).filter(Boolean));
+        const overlap = [...nextKeys].filter(key => prevKeys.has(key)).length;
+        const overlapRatio = nextKeys.size ? overlap / nextKeys.size : 0;
+
+        // If next is largely overlapping, prefer latest summary to avoid stacking duplicates.
+        if (overlapRatio >= 0.6) {
+            return nextLines.slice(0, maxLines).join('\n');
+        }
+
+        const normalizeLine = (line: string) =>
+            line
+                .replace(/^[-•]\s*/g, '')
+                .replace(/^"+/, '')
+                .replace(/"+$/, '')
+                .replace(/,+\s*$/g, '')
+                .trim();
+        const combined = [...prevLines, ...nextLines].map(normalizeLine).filter(Boolean);
         const seen = new Set<string>();
         const deduped: string[] = [];
         for (const line of combined) {
-            if (seen.has(line)) continue;
-            seen.add(line);
+            const key = line.replace(/\s+/g, ' ').toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
             deduped.push(line);
         }
         return deduped.slice(0, maxLines).join('\n');
@@ -445,7 +498,11 @@ export function useChat() {
             const response = await fetch('/api/summary', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: snapshot.map(m => ({ role: m.role, content: m.content })) }),
+                body: JSON.stringify({
+                    messages: snapshot.map(m => ({ role: m.role, content: m.content })),
+                    prevSummary: summary,
+                    inviteCode: getInviteCode(),
+                }),
             });
 
             if (!response.ok) {
@@ -465,7 +522,7 @@ export function useChat() {
                         userCharCount,
                         userSignalScore
                     );
-                    void saveConversation(snapshot, merged, newStage);
+                    void saveConversation(snapshot, merged, newStage, getInviteCode());
                     return merged;
                 });
             }
@@ -474,7 +531,7 @@ export function useChat() {
         } finally {
             setIsSummarizing(false);
         }
-    }, [deepTurns, userMessageCount, userCharCount, userSignals]);
+    }, [deepTurns, userMessageCount, userCharCount, userSignals, summary]);
 
     const sendMessage = useCallback(async (content: string, isQuickAction?: string) => {
         if (!content.trim() || isLoading) return;
@@ -517,7 +574,8 @@ export function useChat() {
         void saveConversation(
             currentMessages.map(m => ({ role: m.role, content: m.content })),
             summary,
-            currentStage
+            currentStage,
+            getInviteCode()
         );
         setIsLoading(true);
         setIsThinking(true);
@@ -531,6 +589,7 @@ export function useChat() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     messages: currentMessages.map(m => ({ role: m.role, content: m.content })),
+                    inviteCode: getInviteCode(),
                 }),
             });
 
@@ -586,7 +645,7 @@ export function useChat() {
             const errorMsg: Message = {
                 id: assistantId,
                 role: 'assistant',
-                content: "思考过程中遇到了问题。请确保 `.env.local` 文件中已正确设置 `OPENROUTER_API_KEY`。",
+                content: "思考过程中遇到了问题。请确保 `.env.local` 文件中已正确设置可用的 API Key。",
             };
             setMessages(prev => prev.map(m => (m.id === assistantId ? errorMsg : m)));
         } finally {

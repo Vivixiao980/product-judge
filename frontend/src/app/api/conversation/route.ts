@@ -17,7 +17,7 @@ function getClientIP(request: NextRequest): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { sessionId, messages, summary, stage } = body;
+    const { sessionId, messages, summary, stage, inviteCode } = body;
 
     if (!sessionId) {
       return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       messageCount: messages?.length || 0,
       stage,
+      inviteCode,
     });
 
     const ip = getClientIP(request);
@@ -56,6 +57,7 @@ export async function POST(request: NextRequest) {
           message_count: messages?.length || 0,
           ip_address: ip,
           user_agent: userAgent,
+          invite_code: inviteCode || null,
         })
         .eq('session_id', sessionId);
 
@@ -75,6 +77,7 @@ export async function POST(request: NextRequest) {
           message_count: messages?.length || 0,
           ip_address: ip,
           user_agent: userAgent,
+          invite_code: inviteCode || null,
         });
 
       if (error) {

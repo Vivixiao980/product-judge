@@ -1,20 +1,53 @@
 import { NextRequest } from 'next/server';
+import { createAICompletionJson } from '@/lib/ai-client';
 
 interface Message {
     role: 'user' | 'assistant' | 'system';
     content: string;
 }
 
-export async function POST(req: NextRequest) {
-    const { messages } = await req.json();
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const METASO_API_KEY = process.env.METASO_API_KEY;
+const METASO_ENDPOINT = process.env.METASO_API_URL || 'https://api.ecn.ai/metaso/search';
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-        return new Response(JSON.stringify({ error: 'API key not configured' }), { status: 500 });
+async function getKnowledgeContext(query: string): Promise<string> {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/knowledge`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, k: 5 }),
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return data.context || '';
+        }
+    } catch (error) {
+        console.error('Failed to fetch knowledge context:', error);
     }
+    return '';
+}
+
+const resolvePreferredProvider = (inviteCode?: string) => {
+    const normalized = (inviteCode || '').trim().toLowerCase();
+    if (normalized === 'productthink') return 'OpenRouter';
+    if (normalized === 'vivi') return 'VectorEngine';
+    return undefined;
+};
+
+export async function POST(req: NextRequest) {
+    const { messages, prevSummary, inviteCode } = await req.json();
+    const preferredProvider = resolvePreferredProvider(inviteCode);
 
     // 取最近 16 条消息，确保有足够上下文
     const recentMessages = messages.slice(-16);
+    const conversationContext = recentMessages
+        .map((m: Message) => m.content)
+        .join('\n');
+    const summaryContext = prevSummary ? JSON.stringify(prevSummary) : '';
+    const knowledgeContext = await getKnowledgeContext(
+        [conversationContext, summaryContext].filter(Boolean).join('\n')
+    );
     const summaryPrompt = [
         {
             role: 'system',
@@ -37,8 +70,21 @@ export async function POST(req: NextRequest) {
 - 每个字段用简洁短句，避免长段落
 - 只输出 JSON 对象，不要包含额外文字
 - 所有 key 必须使用双引号
-- 不要使用尾随逗号`,
+- 不要使用尾随逗号
+- 你会收到上一轮 summary（如有），请在其基础上增量更新，不要随意丢失已有结论`,
         },
+        ...(knowledgeContext
+            ? [{
+                role: 'system' as const,
+                content: `以下是知识库检索到的内容，请仅在有帮助时引用，用于补充对标案例或总结。\n\n${knowledgeContext}`,
+            }]
+            : []),
+        ...(prevSummary
+            ? [{
+                role: 'user' as const,
+                content: `上一轮 summary JSON：\n${JSON.stringify(prevSummary)}`,
+            }]
+            : []),
         ...recentMessages,
         {
             role: 'user',
@@ -46,29 +92,18 @@ export async function POST(req: NextRequest) {
         },
     ];
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.APP_URL || 'http://localhost:3000',
-            'X-Title': 'ProductThink',
-        },
-        body: JSON.stringify({
-            model: 'anthropic/claude-3.5-sonnet',
+    let text = '';
+    try {
+        console.log('[Summary API] Preferred provider:', { inviteCode, preferredProvider });
+        const result = await createAICompletionJson({
             messages: summaryPrompt,
-            stream: false,
-        }),
-    });
-
-    if (!response.ok) {
-        const errorBody = await response.text();
-        console.error('OpenRouter summary error:', errorBody);
-        return new Response(JSON.stringify({ error: 'Failed to get summary response' }), { status: response.status });
+            preferredProvider,
+        });
+        text = result.content || '';
+    } catch (error) {
+        console.error('Summary provider error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to get summary response' }), { status: 500 });
     }
-
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || '';
 
     const coerceText = (value: unknown): string => {
         if (typeof value === 'string') return value;
@@ -156,6 +191,81 @@ export async function POST(req: NextRequest) {
         return cleaned;
     };
 
+    type SearchItem = { title: string; link?: string; snippet?: string };
+
+    const extractSearchItems = (payload: unknown): SearchItem[] => {
+        const items: SearchItem[] = [];
+        if (!payload || typeof payload !== 'object') return items;
+        const values = Object.values(payload as Record<string, unknown>);
+        for (const value of values) {
+            if (!Array.isArray(value)) continue;
+            for (const entry of value) {
+                if (!entry || typeof entry !== 'object') continue;
+                const record = entry as Record<string, unknown>;
+                const title = coerceText(record.title || record.name || '').trim();
+                if (!title) continue;
+                const link = coerceText(record.link || record.url || '').trim();
+                const snippet = coerceText(record.snippet || record.summary || record.description || '').trim();
+                items.push({ title, link, snippet });
+            }
+        }
+        const seen = new Set<string>();
+        return items.filter(item => {
+            const key = `${item.title}|${item.link || ''}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    };
+
+    const parseCasesFromText = (raw: string) => {
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (!match) return [];
+        try {
+            const parsed = JSON.parse(sanitizeJson(match[0]));
+            const normalized = normalizeSummary(parsed);
+            return normalized.cases || [];
+        } catch {
+            return [];
+        }
+    };
+
+    const searchMetaso = async (query: string) => {
+        if (!METASO_API_KEY) {
+            console.warn('[Metaso] Missing METASO_API_KEY');
+            return [];
+        }
+        try {
+            console.log('[Metaso] Searching:', { endpoint: METASO_ENDPOINT });
+            const response = await fetch(METASO_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${METASO_API_KEY}`,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    q: query,
+                    scope: 'webpage',
+                    includeSummary: true,
+                    size: 8,
+                }),
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[Metaso] Non-200 response:', response.status, errorText);
+                return [];
+            }
+            const data = await response.json();
+            const items = extractSearchItems(data);
+            console.log('[Metaso] Results:', items.length);
+            return items;
+        } catch (error) {
+            console.error('Metaso search failed:', error);
+            return [];
+        }
+    };
+
     const extractFallbackSummary = (raw: string) => {
         const textBlock = raw.replace(/\r\n/g, '\n');
         const keyPattern = /(?:^|\n)\s*"?\s*(product|aiAdvice|userNotes|cases)\s*"?\s*[:：]\s*/i;
@@ -213,32 +323,163 @@ export async function POST(req: NextRequest) {
         });
     };
 
+    const extractSearchIntent = async (summaryText: string, assistantText: string) => {
+        const prompt = [
+            {
+                role: 'system' as const,
+                content: `你是关键词提取助手。请从产品描述中提取 2-4 个用于搜索的核心关键词（短语），并从 AI 回复中提取明确出现的产品名。
+输出严格 JSON：
+{"keywords":["..."],"mentionedProducts":["..."]}`,
+            },
+            {
+                role: 'user' as const,
+                content: `产品摘要：\n${summaryText || '暂无'}\n\nAI 回复：\n${assistantText || '暂无'}`,
+            },
+        ];
+
+        try {
+            const result = await createAICompletionJson({ messages: prompt, preferredProvider });
+            const match = result.content.match(/\{[\s\S]*\}/);
+            if (!match) return { keywords: [], mentionedProducts: [] };
+            const parsed = JSON.parse(sanitizeJson(match[0]));
+            const keywords = Array.isArray(parsed.keywords) ? parsed.keywords.map(coerceText).filter(Boolean) : [];
+            const mentionedProducts = Array.isArray(parsed.mentionedProducts)
+                ? parsed.mentionedProducts.map(coerceText).filter(Boolean)
+                : [];
+            return { keywords, mentionedProducts };
+        } catch (error) {
+            console.error('Extract search intent failed:', error);
+            return { keywords: [], mentionedProducts: [] };
+        }
+    };
+
+    const deriveCasesFromSearch = async (summaryText: string, items: SearchItem[]) => {
+        if (!items.length) return [];
+        const compact = items.slice(0, 8).map((item, index) => {
+            return `${index + 1}. ${item.title}\n${item.snippet || ''}\n${item.link || ''}`.trim();
+        }).join('\n\n');
+
+        const prompt = [
+            {
+                role: 'system' as const,
+                content: `你是产品对标提取助手。基于搜索结果提取可能是产品/平台名称，最多 3 个。
+要求：
+- 排除媒体报道、教程文章、招聘页、论坛帖子
+- 优先保留真实产品/平台/工具
+- 输出严格 JSON：{"cases":[{"name":"产品名","reason":"1 句相关性理由"}]}`,
+            },
+            {
+                role: 'user' as const,
+                content: `产品概述：\n${summaryText || '暂无'}\n\n搜索结果：\n${compact}\n\n请输出 JSON。`,
+            },
+        ];
+
+        try {
+            const result = await createAICompletionJson({ messages: prompt, preferredProvider });
+            const cases = parseCasesFromText(result.content || '');
+            return cases.slice(0, 3);
+        } catch (error) {
+            console.error('Derive cases from search failed:', error);
+            return [];
+        }
+    };
+
+    const summarizeProductFromSearch = async (productName: string, items: SearchItem[]) => {
+        if (!items.length) return '';
+        const compact = items.slice(0, 6).map((item, index) => {
+            return `${index + 1}. ${item.title}\n${item.snippet || ''}\n${item.link || ''}`.trim();
+        }).join('\n\n');
+
+        const prompt = [
+            {
+                role: 'system' as const,
+                content: `你是产品简介助手。基于搜索结果，用 1 句中文概括该产品的主要功能，尽量简短。只输出句子，不要额外格式。`,
+            },
+            {
+                role: 'user' as const,
+                content: `产品名：${productName}\n\n搜索结果：\n${compact}\n\n请输出一句话功能描述。`,
+            },
+        ];
+
+        try {
+            const result = await createAICompletionJson({ messages: prompt });
+            return normalizeText(result.content || '');
+        } catch (error) {
+            console.error('Summarize product failed:', error);
+            return '';
+        }
+    };
+
+    const applyCaseFallback = async (summary: { product: string; aiAdvice: string; userNotes: string; cases: { name: string; reason: string }[] }) => {
+        const summaryText = [summary.product, summary.aiAdvice, summary.userNotes]
+            .filter(Boolean)
+            .join('\n');
+        const assistantText = recentMessages
+            .filter((m: Message) => m.role === 'assistant')
+            .map(m => m.content)
+            .join('\n');
+
+        const { keywords, mentionedProducts } = await extractSearchIntent(summaryText, assistantText);
+        const merged = new Map<string, { name: string; reason: string }>();
+
+        const addCase = (name: string, reason: string) => {
+            const trimmed = name.trim();
+            if (!trimmed) return;
+            const key = trimmed.toLowerCase();
+            if (merged.has(key)) return;
+            merged.set(key, { name: trimmed, reason: reason.trim() });
+        };
+
+        // 1) AI 回复中明确提到的产品：补充主要功能说明
+        for (const product of mentionedProducts.slice(0, 3)) {
+            const items = await searchMetaso(`${product} 是什么 功能 产品`);
+            const feature = await summarizeProductFromSearch(product, items);
+            addCase(product, feature || 'AI 回复中明确提及的相关产品');
+        }
+
+        // 2) 用关键词做一次搜索，补齐对标产品
+        if (merged.size < 3 && keywords.length) {
+            const query = `${keywords.join(' ')} 类似产品 竞品 对标`;
+            const searchItems = await searchMetaso(query);
+            const searchCases = await deriveCasesFromSearch(summaryText, searchItems);
+            searchCases.forEach(item => addCase(item.name, item.reason));
+        }
+
+        const cases = Array.from(merged.values()).slice(0, 3);
+        return { ...summary, cases };
+    };
+
     try {
         const parsed = JSON.parse(text);
-        return new Response(JSON.stringify({ summary: normalizeSummary(parsed) }), { status: 200 });
+        const normalized = normalizeSummary(parsed);
+        const enhanced = await applyCaseFallback(normalized);
+        return new Response(JSON.stringify({ summary: enhanced }), { status: 200 });
     } catch (error) {
         const match = text.match(/\{[\s\S]*\}/);
         if (match) {
             try {
                 const parsed = JSON.parse(sanitizeJson(match[0]));
-                return new Response(JSON.stringify({ summary: normalizeSummary(parsed) }), { status: 200 });
+                const normalized = normalizeSummary(parsed);
+                const enhanced = await applyCaseFallback(normalized);
+                return new Response(JSON.stringify({ summary: enhanced }), { status: 200 });
             } catch (innerError) {
                 console.error('Failed to parse extracted summary JSON:', innerError);
             }
         }
         const fallback = extractFallbackSummary(text);
         if (fallback) {
-            return new Response(JSON.stringify({ summary: fallback }), { status: 200 });
+            const enhanced = await applyCaseFallback(fallback);
+            return new Response(JSON.stringify({ summary: enhanced }), { status: 200 });
         }
         console.error('Failed to parse summary JSON:', error);
         return new Response(
             JSON.stringify({
-                summary: normalizeSummary({
+                summary: await applyCaseFallback(normalizeSummary({
                     product: '暂无明确结论',
                     aiAdvice: '暂无明确结论',
                     userNotes: '待用户补充',
                     cases: [],
-                }),
+                })),
             }),
             { status: 200 }
         );

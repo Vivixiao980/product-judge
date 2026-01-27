@@ -23,10 +23,82 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
   const reportRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const completedAnalyses = analyses.filter((a) => a.status === 'completed');
-  const overallScore =
+  const ALLOWED_SCORES = [0, 2, 5, 8, 10];
+  const snapScore = (score: number) => {
+    if (Number.isNaN(score)) return 5;
+    let closest = ALLOWED_SCORES[0];
+    let minDiff = Math.abs(score - closest);
+    for (const candidate of ALLOWED_SCORES) {
+      const diff = Math.abs(score - candidate);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = candidate;
+      }
+    }
+    return closest;
+  };
+  const overallRaw =
     completedAnalyses.length > 0
       ? completedAnalyses.reduce((sum, a) => sum + a.score, 0) / completedAnalyses.length
       : 0;
+  const overallScore = snapScore(overallRaw);
+
+  const getScoreRationale = () => {
+    const linesCount = (text: string) => text.split('\n').map(l => l.trim()).filter(Boolean).length;
+    const productLines = linesCount(summary.product || '');
+    const adviceLines = linesCount(summary.aiAdvice || '');
+    const notesLines = linesCount(summary.userNotes || '');
+    const hasCases = (summary.cases || []).length > 0;
+    const hasValidation = /验证|数据|指标|反馈|转化|付费|留存|复购|试点|上线|测试/.test(summary.product || '');
+    const hasStage = /阶段|Demo|MVP|测试|上线|试点/.test(summary.product || '');
+
+    if (overallScore <= 2) {
+      return '综合评分偏低，主要因为当前信息较少或较分散，产品定位与关键场景仍不清晰，缺少可验证的证据。建议先补齐目标用户、核心场景与价值主张的最小描述。';
+    }
+    if (overallScore === 5) {
+      return '综合评分处于中等水平，已具备基本的用户与场景描述，但验证证据与落地路径仍不充分。若能补充清晰的验证数据或实验结果，评分还有上升空间。';
+    }
+    if (overallScore === 8) {
+      return '综合评分偏高，原因是产品描述较完整，包含明确的目标用户与场景，并已有阶段性进展' +
+        `${hasValidation ? '与初步验证信号' : ''}。下一步建议补充量化指标与可持续增长路径以支撑更高评分。`;
+    }
+    if (overallScore >= 10) {
+      return '综合评分极高，说明产品定位、目标用户与落地路径非常清晰，并且已有充分的验证证据与规模化迹象。当前重点是保持增长质量与可复制性。';
+    }
+    const detailSignals = [
+      productLines >= 2 ? '产品描述较清晰' : '产品描述仍需补充',
+      adviceLines >= 2 ? '建议可执行性较好' : '建议可执行性有待加强',
+      notesLines >= 1 ? '用户补充信息较完整' : '用户补充信息较少',
+      hasCases ? '具备参考案例' : '案例信息不足',
+      hasStage ? '已有阶段性进展' : '阶段进展不明确',
+    ];
+    return `综合评分为 ${overallScore}，${detailSignals.join('，')}。`;
+  };
+
+  const getExpertScoreRationale = (category?: string, score?: number) => {
+    const value = score ?? 0;
+    const base = value >= 8
+      ? '当前方案较成熟'
+      : value >= 5
+        ? '当前方案处于中等水平'
+        : '当前方案仍偏早期';
+    switch (category) {
+      case 'product':
+        return `${base}，从产品价值与用户匹配度看，仍需补齐关键场景与价值主张的验证证据。`;
+      case 'growth':
+        return `${base}，从增长与留存视角看，需要更清晰的增长杠杆与复访机制支撑。`;
+      case 'investor':
+        return `${base}，从商业化与风险视角看，需证明可持续收入模型与可复制路径。`;
+      case 'tech':
+        return `${base}，从技术可行性与成本视角看，还需要明确实现路径与维护成本。`;
+      case 'design':
+        return `${base}，从体验与呈现视角看，信息架构与交互闭环仍有优化空间。`;
+      case 'user':
+        return `${base}，从用户动机与易用性视角看，核心触发点与持续使用理由需强化。`;
+      default:
+        return `${base}，需进一步补齐关键假设与验证证据。`;
+    }
+  };
 
   const stripJsonBlocks = (raw: string) => {
     if (!raw) return '';
@@ -82,19 +154,20 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
       const pageHeightPx = Math.floor(usableHeight * pxPerMm);
       const totalPages = Math.ceil(canvas.height / pageHeightPx);
 
-      const logoUrl = '/bot-avatar.svg';
-      const logoData = await fetch(logoUrl)
-        .then((res) => res.blob())
-        .then(
-          (blob) =>
-            new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = () => reject(new Error('logo load failed'));
-              reader.readAsDataURL(blob);
-            })
-        )
-        .catch(() => '');
+      const logoCanvas = document.createElement('canvas');
+      logoCanvas.width = 32;
+      logoCanvas.height = 32;
+      const logoCtx = logoCanvas.getContext('2d');
+      if (logoCtx) {
+        logoCtx.fillStyle = '#111111';
+        logoCtx.fillRect(0, 0, 32, 32);
+        logoCtx.fillStyle = '#ffffff';
+        logoCtx.font = 'bold 14px sans-serif';
+        logoCtx.textAlign = 'center';
+        logoCtx.textBaseline = 'middle';
+        logoCtx.fillText('PT', 16, 17);
+      }
+      const logoData = logoCanvas.toDataURL('image/jpeg', 0.92);
 
       for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
         if (pageIndex > 0) pdf.addPage();
@@ -120,20 +193,18 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
           );
         }
 
-        const pageImg = pageCanvas.toDataURL('image/png');
+        const pageImg = pageCanvas.toDataURL('image/jpeg', 0.92);
         const imgHeight = (sourceHeight / pxPerMm);
         const contentY = margin + headerHeight;
 
         // 页眉
-        if (logoData) {
-          pdf.addImage(logoData, 'PNG', margin, margin, 8, 8);
-          pdf.setFontSize(10);
-          pdf.setTextColor(40);
-          pdf.text('ProductThink 报告', margin + 12, margin + 6);
-        }
+        pdf.addImage(logoData, 'JPEG', margin, margin, 8, 8);
+        pdf.setFontSize(10);
+        pdf.setTextColor(40);
+        pdf.text('ProductThink 报告', margin + 12, margin + 6);
 
         // 内容
-        pdf.addImage(pageImg, 'PNG', margin, contentY, usableWidth, imgHeight);
+        pdf.addImage(pageImg, 'JPEG', margin, contentY, usableWidth, imgHeight);
 
         // 页脚
         const footerY = pageHeight - margin - 3;
@@ -241,6 +312,9 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
             </div>
           </div>
         </div>
+        <p className="mt-4 text-sm text-gray-600 leading-relaxed">
+          {getScoreRationale()}
+        </p>
       </div>
 
       {/* 本周行动 - 新增重点板块 */}
@@ -323,6 +397,9 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
                     {analysis.score.toFixed(1)}
                   </span>
                 </div>
+                <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+                  {getExpertScoreRationale(expert.category, analysis.score)}
+                </p>
               </div>
             );
           })}
@@ -403,6 +480,9 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-xs text-gray-500 mb-3">
+                    {getExpertScoreRationale(expert.category, analysis.score)}
+                  </p>
                   {isGeneratingPDF ? (
                     <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
                       {stripJsonBlocks(analysis.analysis)}

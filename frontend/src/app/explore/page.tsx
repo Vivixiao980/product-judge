@@ -136,11 +136,11 @@ export default function ExplorePage() {
                         </div>
 
                         {activeCard.tags?.length ? (
-                            <div className="flex flex-wrap gap-2 mt-6">
+                            <div className="flex flex-wrap gap-1.5 mt-6">
                                 {activeCard.tags.map(tag => (
                                     <span
                                         key={tag}
-                                        className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full"
+                                        className="text-xs text-gray-600 bg-gray-100/70 px-2 py-0.5 rounded-full border border-gray-200/60 whitespace-nowrap"
                                     >
                                         #{tag}
                                     </span>

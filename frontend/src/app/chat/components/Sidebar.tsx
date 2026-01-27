@@ -40,7 +40,7 @@ export function Sidebar({ stageConfig, summary, isSummarizing, currentStage, can
     const currentIndex = STAGES.findIndex(s => s.key === currentStage);
     const normalizeCases = () => {
         const invalidNames = new Set(['[', ']', '{', '}', '"name"', 'name']);
-        return (summary.cases || [])
+        const entries = (summary.cases || [])
             .map(item => {
                 const name = String(item.name || '').replace(/^[\s"{\[]+|[\s"}\]]+$/g, '').trim();
                 const reason = String(item.reason || '').trim();
@@ -48,6 +48,19 @@ export function Sidebar({ stageConfig, summary, isSummarizing, currentStage, can
                 return { name, reason };
             })
             .filter((item): item is { name: string; reason: string } => Boolean(item));
+
+        const merged = new Map<string, string[]>();
+        for (const item of entries) {
+            const key = item.name.toLowerCase();
+            const reasons = merged.get(key) || [];
+            if (item.reason && !reasons.includes(item.reason)) reasons.push(item.reason);
+            merged.set(key, reasons);
+        }
+
+        return Array.from(merged.entries()).map(([key, reasons]) => ({
+            name: entries.find(item => item.name.toLowerCase() === key)?.name || key,
+            reason: reasons.join('；'),
+        }));
     };
 
     return (
