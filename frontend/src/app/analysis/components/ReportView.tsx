@@ -1,6 +1,9 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import { Download, Share2, MessageSquare, CheckCircle2, Loader2 } from 'lucide-react';
 import { ExpertAnalysis, USER_GOALS, UserGoal } from '../types';
 import { getExpertById } from '@/data/experts';
@@ -28,8 +31,7 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
   const stripJsonBlocks = (raw: string) => {
     if (!raw) return '';
     let cleaned = raw.replace(/```json[\s\S]*?```/g, '');
-    cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
-    cleaned = cleaned.replace(/\{[\s\S]*"score"[\s\S]*\}/g, '');
+    cleaned = cleaned.replace(/\n?\{[\s\S]*"score"[\s\S]*\}\s*$/g, '');
     return cleaned.trim();
   };
 
@@ -385,9 +387,35 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
-                    {stripJsonBlocks(analysis.analysis)}
-                  </p>
+                  <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkBreaks]}
+                      components={{
+                        pre: ({ children }) => (
+                          <pre className="whitespace-pre-wrap break-words overflow-x-auto bg-gray-100 p-3 rounded text-gray-600 leading-relaxed">
+                            {children}
+                          </pre>
+                        ),
+                        code: ({ children, className }) => {
+                          const isBlock = className?.includes('language-');
+                          return isBlock ? (
+                            <code className="font-mono text-[0.9em] whitespace-pre-wrap break-words text-gray-700 leading-relaxed">
+                              {children}
+                            </code>
+                          ) : (
+                            <code className="px-1 py-0.5 rounded bg-gray-100 font-mono text-[0.9em] text-gray-700">
+                              {children}
+                            </code>
+                          );
+                        },
+                        h1: ({ children }) => <h1 className="text-lg font-semibold mt-3 mb-2">{children}</h1>,
+                        h2: ({ children }) => <h2 className="text-base font-semibold mt-3 mb-2">{children}</h2>,
+                        h3: ({ children }) => <h3 className="text-sm font-semibold mt-3 mb-2">{children}</h3>,
+                      }}
+                    >
+                      {stripJsonBlocks(analysis.analysis)}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             );
