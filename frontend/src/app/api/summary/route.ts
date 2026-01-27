@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     const knowledgeContext = await getKnowledgeContext(
         [conversationContext, summaryContext].filter(Boolean).join('\n')
     );
-    const summaryPrompt = [
+    const summaryPrompt: Message[] = [
         {
             role: 'system',
             content: `你是对话纪要助手。请基于用户与 AI 的对话，输出严格 JSON 格式，不要额外解释或 markdown。
