@@ -90,12 +90,21 @@ export function ExpertChat({ analysis }: ExpertChatProps) {
       {/* 头部 */}
       <div className="p-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-            style={{ backgroundColor: expert.color }}
-          >
-            {expert.name.charAt(0)}
-          </div>
+          {expert.avatar ? (
+            <img
+              src={expert.avatar}
+              alt={expert.name}
+              className="w-10 h-10 rounded-full object-cover border border-gray-200"
+              loading="lazy"
+            />
+          ) : (
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+              style={{ backgroundColor: expert.color }}
+            >
+              {expert.name.charAt(0)}
+            </div>
+          )}
           <div>
             <h3 className="font-semibold">{expert.name}</h3>
             <p className="text-sm text-gray-500">{expert.title}</p>
