@@ -314,8 +314,6 @@ export function useChat() {
         cases: [],
     });
     const [deepTurns, setDeepTurns] = useState(0);
-    const [userMessageCount, setUserMessageCount] = useState(0);
-    const [userCharCount, setUserCharCount] = useState(0);
     const [userSignals, setUserSignals] = useState({
         user: false,
         scenario: false,
