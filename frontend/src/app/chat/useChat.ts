@@ -216,19 +216,34 @@ const mergeSummary = (prev: Summary, next: Summary): Summary => {
         return !normalized || normalized.includes('暂无') || normalized.includes('待用户补充');
     };
 
+    const stripPlaceholders = (text: string) => {
+        return text
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean)
+            .filter(line => !line.includes('等待你介绍') && !line.includes('先聊聊你的产品背景'));
+    };
+
+    const scoreLines = (lines: string[]) => lines.length;
+
     const mergeText = (prevText: string, nextText: string, minLines = 1, maxLines = 6) => {
         if (!nextText || isBlank(nextText)) return prevText;
         if (!prevText || isBlank(prevText)) return nextText;
         if (!isMeaningful(nextText, minLines)) return prevText;
         if (prevText.includes(nextText)) return prevText;
-        const combined = [prevText.trim(), nextText.trim()].filter(Boolean).join('\n');
-        const lines = combined
-            .split('\n')
-            .map(line => line.trim())
-            .filter(Boolean);
+
+        const prevLines = stripPlaceholders(prevText);
+        const nextLines = stripPlaceholders(nextText);
+
+        // If next clearly more complete, replace instead of append
+        if (scoreLines(nextLines) >= scoreLines(prevLines) + 2) {
+            return nextLines.slice(0, maxLines).join('\n');
+        }
+
+        const combined = [...prevLines, ...nextLines];
         const seen = new Set<string>();
         const deduped: string[] = [];
-        for (const line of lines) {
+        for (const line of combined) {
             if (seen.has(line)) continue;
             seen.add(line);
             deduped.push(line);
