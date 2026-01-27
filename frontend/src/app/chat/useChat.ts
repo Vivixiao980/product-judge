@@ -521,7 +521,6 @@ export function useChat() {
         );
         setIsLoading(true);
         setIsThinking(true);
-        void requestSummary(currentMessages);
 
         const assistantId = (Date.now() + 1).toString();
         setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '' }]);
