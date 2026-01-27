@@ -116,6 +116,20 @@ const normalizeSummary = (value: unknown): Summary => {
         }
         return trimmed;
     };
+    const normalizeLines = (text: string, maxLines: number) => {
+        const lines = text
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean);
+        const seen = new Set<string>();
+        const deduped: string[] = [];
+        for (const line of lines) {
+            if (seen.has(line)) continue;
+            seen.add(line);
+            deduped.push(line);
+        }
+        return deduped.slice(0, maxLines).join('\n');
+    };
 
     const obj = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
     const casesRaw = obj.cases ?? [];
@@ -170,11 +184,20 @@ const normalizeSummary = (value: unknown): Summary => {
             cases = quoted.split('\n').map(name => ({ name: name.trim(), reason: '' })).filter(item => item.name);
         }
     }
+    cases = cases.flatMap(item => {
+        if (item.name && (item.name.includes('{') || item.name.includes('['))) {
+            const quoted = extractQuotedLines(item.name);
+            if (quoted) {
+                return quoted.split('\n').map(name => ({ name: name.trim(), reason: item.reason || '' })).filter(i => i.name);
+            }
+        }
+        return [item];
+    });
 
     return {
-        product: normalizeText(coerceText(obj.product)),
-        aiAdvice: normalizeText(coerceText(obj.aiAdvice)),
-        userNotes: normalizeText(coerceText(obj.userNotes)),
+        product: normalizeLines(normalizeText(coerceText(obj.product)), 6),
+        aiAdvice: normalizeLines(normalizeText(coerceText(obj.aiAdvice)), 6),
+        userNotes: normalizeLines(normalizeText(coerceText(obj.userNotes)), 6),
         cases,
     };
 };
@@ -193,13 +216,24 @@ const mergeSummary = (prev: Summary, next: Summary): Summary => {
         return !normalized || normalized.includes('暂无') || normalized.includes('待用户补充');
     };
 
-    const mergeText = (prevText: string, nextText: string, minLines = 1) => {
+    const mergeText = (prevText: string, nextText: string, minLines = 1, maxLines = 6) => {
         if (!nextText || isBlank(nextText)) return prevText;
         if (!prevText || isBlank(prevText)) return nextText;
         if (!isMeaningful(nextText, minLines)) return prevText;
         if (prevText.includes(nextText)) return prevText;
         const combined = [prevText.trim(), nextText.trim()].filter(Boolean).join('\n');
-        return combined;
+        const lines = combined
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean);
+        const seen = new Set<string>();
+        const deduped: string[] = [];
+        for (const line of lines) {
+            if (seen.has(line)) continue;
+            seen.add(line);
+            deduped.push(line);
+        }
+        return deduped.slice(0, maxLines).join('\n');
     };
 
     const mergedCases = (() => {
@@ -215,9 +249,9 @@ const mergeSummary = (prev: Summary, next: Summary): Summary => {
     })();
 
     return {
-        product: mergeText(prev.product, next.product, 1),
-        aiAdvice: mergeText(prev.aiAdvice, next.aiAdvice, 1),
-        userNotes: mergeText(prev.userNotes, next.userNotes, 1),
+        product: mergeText(prev.product, next.product, 1, 6),
+        aiAdvice: mergeText(prev.aiAdvice, next.aiAdvice, 1, 6),
+        userNotes: mergeText(prev.userNotes, next.userNotes, 1, 6),
         cases: mergedCases,
     };
 };
