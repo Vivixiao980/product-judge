@@ -125,19 +125,27 @@ export function ExpertChat({ analysis }: ExpertChatProps) {
         )}
 
         {(analysis.status === 'analyzing' || analysis.status === 'completed') && (
-          <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed prose-pre:whitespace-pre-wrap prose-pre:break-words">
+          <div className="prose prose-sm max-w-none text-gray-700 text-[13px] leading-loose prose-pre:whitespace-pre-wrap prose-pre:break-words">
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkBreaks]}
               components={{
+                p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
+                ul: ({ children }) => <ul className="pl-5 my-3 list-disc space-y-1">{children}</ul>,
+                ol: ({ children, start }) => (
+                  <ol className="pl-5 my-3 list-decimal space-y-1" start={start}>
+                    {children}
+                  </ol>
+                ),
+                li: ({ children }) => <li className="mb-0.5">{children}</li>,
                 pre: ({ children }) => (
-                  <pre className="whitespace-pre-wrap break-words overflow-x-auto bg-gray-50 p-3 rounded text-gray-600 leading-relaxed">
+                  <pre className="whitespace-pre-wrap break-words overflow-x-auto bg-gray-50 p-3 rounded text-gray-600 leading-loose">
                     {children}
                   </pre>
                 ),
                 code: ({ children, className }) => {
                   const isBlock = className?.includes('language-');
                   return isBlock ? (
-                    <code className="font-mono text-[0.9em] whitespace-pre-wrap break-words text-gray-700 leading-relaxed">
+                    <code className="font-mono text-[0.9em] whitespace-pre-wrap break-words text-gray-700 leading-loose">
                       {children}
                     </code>
                   ) : (

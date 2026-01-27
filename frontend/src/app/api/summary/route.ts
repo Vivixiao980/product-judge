@@ -83,6 +83,26 @@ export async function POST(req: NextRequest) {
         return String(value);
     };
 
+    const normalizeText = (raw: string) => {
+        const trimmed = raw.trim();
+        if (!trimmed) return trimmed;
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            try {
+                const parsed = JSON.parse(sanitizeJson(trimmed));
+                return coerceText(parsed).trim();
+            } catch {
+                // fall through
+            }
+        }
+        return trimmed
+            .replace(/^[\[\{]\s*/g, '')
+            .replace(/[\]\}]\s*$/g, '')
+            .replace(/^[-•]\s*/gm, '')
+            .replace(/",\s*$/gm, '"')
+            .replace(/",?\s*$/gm, '')
+            .trim();
+    };
+
     const normalizeSummary = (value: unknown) => {
         const obj = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
         const casesRaw = (obj.cases ?? []) as unknown;
@@ -92,20 +112,37 @@ export async function POST(req: NextRequest) {
                       if (item && typeof item === 'object') {
                           const record = item as Record<string, unknown>;
                           return {
-                              name: coerceText(record.name),
-                              reason: coerceText(record.reason),
+                              name: normalizeText(coerceText(record.name)),
+                              reason: normalizeText(coerceText(record.reason)),
                           };
                       }
-                      return { name: coerceText(item), reason: '' };
+                      return { name: normalizeText(coerceText(item)), reason: '' };
                   })
                   .filter(item => item.name || item.reason)
             : [];
+        const filteredCases = cases.filter(item => {
+            const name = item.name?.trim();
+            if (!name) return false;
+            if (name === '[' || name === ']' || name === '{' || name === '}' || name === '"name"') return false;
+            if (name.toLowerCase() === 'name') return false;
+            if (name.startsWith('"') && name.endsWith('"')) return false;
+            if (name.length <= 1) return false;
+            return true;
+        });
+        const dedupedCases: { name: string; reason: string }[] = [];
+        const seen = new Set<string>();
+        for (const item of filteredCases) {
+            const key = `${item.name}|${item.reason}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            dedupedCases.push(item);
+        }
 
         return {
-            product: coerceText(obj.product),
-            aiAdvice: coerceText(obj.aiAdvice),
-            userNotes: coerceText(obj.userNotes),
-            cases,
+            product: normalizeText(coerceText(obj.product)),
+            aiAdvice: normalizeText(coerceText(obj.aiAdvice)),
+            userNotes: normalizeText(coerceText(obj.userNotes)),
+            cases: dedupedCases,
         };
     };
 

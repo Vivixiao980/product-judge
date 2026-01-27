@@ -38,6 +38,17 @@ export function Sidebar({ stageConfig, summary, isSummarizing, currentStage, can
 
     // 计算阶段索引
     const currentIndex = STAGES.findIndex(s => s.key === currentStage);
+    const normalizeCases = () => {
+        const invalidNames = new Set(['[', ']', '{', '}', '"name"', 'name']);
+        return (summary.cases || [])
+            .map(item => {
+                const name = String(item.name || '').replace(/^[\s"{\[]+|[\s"}\]]+$/g, '').trim();
+                const reason = String(item.reason || '').trim();
+                if (!name || invalidNames.has(name)) return null;
+                return { name, reason };
+            })
+            .filter((item): item is { name: string; reason: string } => Boolean(item));
+    };
 
     return (
         <aside className="hidden lg:flex flex-col gap-4 py-4">
@@ -175,11 +186,11 @@ export function Sidebar({ stageConfig, summary, isSummarizing, currentStage, can
             {/* Cases */}
             <div className="border border-gray-100 bg-white rounded-2xl p-4">
                 <div className="text-sm font-semibold text-gray-900 mb-3">案例/对标推荐</div>
-                {summary.cases.length === 0 ? (
+                {normalizeCases().length === 0 ? (
                     <div className="text-xs text-gray-400">暂时没有推荐，聊得更具体后会补充。</div>
                 ) : (
                     <div className="space-y-3 text-xs text-gray-700">
-                        {summary.cases.map((item, index) => (
+                        {normalizeCases().map((item, index) => (
                             <div key={`${item.name}-${index}`} className="border-l-2 border-gray-200 pl-3">
                                 <div className="font-semibold text-gray-800">{item.name}</div>
                                 <div className="text-gray-500 mt-1">{item.reason}</div>
