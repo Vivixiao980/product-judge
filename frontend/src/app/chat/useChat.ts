@@ -130,16 +130,37 @@ const normalizeSummary = (value: unknown): Summary => {
             casesArray = [];
         }
     }
+    const cleanCaseText = (text: string) => {
+        const trimmed = text.trim();
+        if (!trimmed) return trimmed;
+        if (trimmed.includes('"') && (trimmed.includes('{') || trimmed.includes('['))) {
+            const quoted = extractQuotedLines(trimmed);
+            return quoted || trimmed;
+        }
+        return trimmed;
+    };
+
     let cases = casesArray
         .map(item => {
             if (item && typeof item === 'object') {
                 const record = item as Record<string, unknown>;
-                return {
-                    name: normalizeText(coerceText(record.name)),
-                    reason: normalizeText(coerceText(record.reason)),
-                };
+                const rawName = normalizeText(coerceText(record.name));
+                const rawReason = normalizeText(coerceText(record.reason));
+                const cleanedName = cleanCaseText(rawName);
+                const cleanedReason = cleanCaseText(rawReason);
+                if (cleanedName.includes('\n')) {
+                    const [first, ...rest] = cleanedName.split('\n').filter(Boolean);
+                    return { name: first || '', reason: rest.join(' ') || cleanedReason };
+                }
+                return { name: cleanedName, reason: cleanedReason };
             }
-            return { name: normalizeText(coerceText(item)), reason: '' };
+            const raw = normalizeText(coerceText(item));
+            const cleaned = cleanCaseText(raw);
+            if (cleaned.includes('\n')) {
+                const [first, ...rest] = cleaned.split('\n').filter(Boolean);
+                return { name: first || '', reason: rest.join(' ') };
+            }
+            return { name: cleaned, reason: '' };
         })
         .filter(item => item.name || item.reason);
 
@@ -172,10 +193,13 @@ const mergeSummary = (prev: Summary, next: Summary): Summary => {
         return !normalized || normalized.includes('暂无') || normalized.includes('待用户补充');
     };
 
-    const preferNext = (prevText: string, nextText: string, minLines = 1) => {
+    const mergeText = (prevText: string, nextText: string, minLines = 1) => {
         if (!nextText || isBlank(nextText)) return prevText;
-        if (isMeaningful(nextText, minLines)) return nextText;
-        return prevText;
+        if (!prevText || isBlank(prevText)) return nextText;
+        if (!isMeaningful(nextText, minLines)) return prevText;
+        if (prevText.includes(nextText)) return prevText;
+        const combined = [prevText.trim(), nextText.trim()].filter(Boolean).join('\n');
+        return combined;
     };
 
     const mergedCases = (() => {
@@ -191,9 +215,9 @@ const mergeSummary = (prev: Summary, next: Summary): Summary => {
     })();
 
     return {
-        product: preferNext(prev.product, next.product, 1),
-        aiAdvice: preferNext(prev.aiAdvice, next.aiAdvice, 1),
-        userNotes: preferNext(prev.userNotes, next.userNotes, 1),
+        product: mergeText(prev.product, next.product, 1),
+        aiAdvice: mergeText(prev.aiAdvice, next.aiAdvice, 1),
+        userNotes: mergeText(prev.userNotes, next.userNotes, 1),
         cases: mergedCases,
     };
 };
