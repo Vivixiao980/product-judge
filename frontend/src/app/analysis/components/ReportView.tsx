@@ -297,10 +297,18 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
               <div key={analysis.expertId} className="bg-gray-50 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium overflow-hidden"
                     style={{ backgroundColor: expert.color }}
                   >
-                    {expert.name.charAt(0)}
+                    {expert.avatar ? (
+                      <img
+                        src={expert.avatar}
+                        alt={expert.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      expert.name.charAt(0)
+                    )}
                   </div>
                   <span className="font-medium">{expert.name}</span>
                 </div>
@@ -372,10 +380,18 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
               <div key={analysis.expertId} className="border-b border-gray-100 pb-6 last:border-0">
                 <div className="flex items-center gap-3 mb-3">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden"
                     style={{ backgroundColor: expert.color }}
                   >
-                    {expert.name.charAt(0)}
+                    {expert.avatar ? (
+                      <img
+                        src={expert.avatar}
+                        alt={expert.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      expert.name.charAt(0)
+                    )}
                   </div>
                   <div>
                     <h3 className="font-semibold">{expert.name}</h3>
@@ -387,35 +403,49 @@ export function ReportView({ summary, analyses, userGoal = 'validate', onBack, o
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
-                  <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkBreaks]}
-                      components={{
-                        pre: ({ children }) => (
-                          <pre className="whitespace-pre-wrap break-words overflow-x-auto bg-gray-100 p-3 rounded text-gray-600 leading-relaxed">
-                            {children}
-                          </pre>
-                        ),
-                        code: ({ children, className }) => {
-                          const isBlock = className?.includes('language-');
-                          return isBlock ? (
-                            <code className="font-mono text-[0.9em] whitespace-pre-wrap break-words text-gray-700 leading-relaxed">
-                              {children}
-                            </code>
-                          ) : (
-                            <code className="px-1 py-0.5 rounded bg-gray-100 font-mono text-[0.9em] text-gray-700">
-                              {children}
-                            </code>
-                          );
-                        },
-                        h1: ({ children }) => <h1 className="text-lg font-semibold mt-3 mb-2">{children}</h1>,
-                        h2: ({ children }) => <h2 className="text-base font-semibold mt-3 mb-2">{children}</h2>,
-                        h3: ({ children }) => <h3 className="text-sm font-semibold mt-3 mb-2">{children}</h3>,
-                      }}
-                    >
+                  {isGeneratingPDF ? (
+                    <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
                       {stripJsonBlocks(analysis.analysis)}
-                    </ReactMarkdown>
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkBreaks]}
+                        components={{
+                          p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+                          ul: ({ children }) => <ul className="pl-5 my-2 list-disc space-y-1">{children}</ul>,
+                          ol: ({ children, start }) => (
+                            <ol className="pl-5 my-2 list-decimal space-y-1" start={start}>
+                              {children}
+                            </ol>
+                          ),
+                          li: ({ children }) => <li className="mb-0.5">{children}</li>,
+                          pre: ({ children }) => (
+                            <pre className="whitespace-pre-wrap break-words overflow-x-auto bg-gray-100 p-3 rounded text-gray-600 leading-relaxed">
+                              {children}
+                            </pre>
+                          ),
+                          code: ({ children, className }) => {
+                            const isBlock = className?.includes('language-');
+                            return isBlock ? (
+                              <code className="font-mono text-[0.9em] whitespace-pre-wrap break-words text-gray-700 leading-relaxed">
+                                {children}
+                              </code>
+                            ) : (
+                              <code className="px-1 py-0.5 rounded bg-gray-100 font-mono text-[0.9em] text-gray-700">
+                                {children}
+                              </code>
+                            );
+                          },
+                          h1: ({ children }) => <h1 className="text-lg font-semibold mt-4 mb-2">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-base font-semibold mt-4 mb-2">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-sm font-semibold mt-4 mb-2">{children}</h3>,
+                        }}
+                      >
+                        {stripJsonBlocks(analysis.analysis)}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                 </div>
               </div>
             );
