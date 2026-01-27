@@ -130,7 +130,7 @@ const normalizeSummary = (value: unknown): Summary => {
             casesArray = [];
         }
     }
-    const cases = casesArray
+    let cases = casesArray
         .map(item => {
             if (item && typeof item === 'object') {
                 const record = item as Record<string, unknown>;
@@ -142,6 +142,13 @@ const normalizeSummary = (value: unknown): Summary => {
             return { name: normalizeText(coerceText(item)), reason: '' };
         })
         .filter(item => item.name || item.reason);
+
+    if (!cases.length && typeof casesRaw === 'string') {
+        const quoted = extractQuotedLines(casesRaw);
+        if (quoted) {
+            cases = quoted.split('\n').map(name => ({ name: name.trim(), reason: '' })).filter(item => item.name);
+        }
+    }
 
     return {
         product: normalizeText(coerceText(obj.product)),
@@ -171,7 +178,17 @@ const mergeSummary = (prev: Summary, next: Summary): Summary => {
         return prevText;
     };
 
-    const mergedCases = next.cases && next.cases.length ? next.cases : prev.cases;
+    const mergedCases = (() => {
+        const combined = [...(prev.cases || []), ...(next.cases || [])];
+        const seen = new Set<string>();
+        return combined.filter(item => {
+            const key = `${item.name}|${item.reason}`;
+            if (!key.replace('|', '').trim()) return false;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    })();
 
     return {
         product: preferNext(prev.product, next.product, 1),
@@ -182,14 +199,40 @@ const mergeSummary = (prev: Summary, next: Summary): Summary => {
 };
 
 const MIN_DEEP_TURNS = 2;
+const MIN_USER_CHARS_FOR_DEEP = 160;
+const MIN_USER_MESSAGES_FOR_DEEP = 2;
+
+const USER_SIGNAL_KEYWORDS = {
+    user: ['目标用户', '用户画像', '人群', '人群画像', '使用者'],
+    scenario: ['场景', '使用', '流程', '工作', '日常', '场合'],
+    pain: ['痛点', '问题', '难点', '困扰', '焦虑'],
+    value: ['价值', '优势', '差异', '收益', '好处'],
+    stage: ['阶段', '进展', 'MVP', 'Demo', '测试', '上线', '发布', '验证'],
+    monetize: ['付费', '价格', '订阅', '商业化', '变现'],
+};
 
 // 计算当前阶段
-const computeStage = (summary: Summary, deepTurns: number): Stage => {
+const computeStage = (
+    summary: Summary,
+    deepTurns: number,
+    userMessageCount: number,
+    userCharCount: number,
+    userSignalScore: number
+): Stage => {
     const productReady = isMeaningful(summary.product, 2);
     const adviceReady = isMeaningful(summary.aiAdvice, 2);
     const userNotesReady = isMeaningful(summary.userNotes, 1);
 
-    if (!productReady) return 'info';
+    if (!productReady) {
+        if (
+            userMessageCount >= MIN_USER_MESSAGES_FOR_DEEP ||
+            userCharCount >= MIN_USER_CHARS_FOR_DEEP ||
+            userSignalScore >= 2
+        ) {
+            return 'deep';
+        }
+        return 'info';
+    }
     if (!adviceReady || !userNotesReady) return 'deep';
     if (deepTurns < MIN_DEEP_TURNS) return 'deep';
     return 'analysis';
@@ -247,6 +290,18 @@ export function useChat() {
         cases: [],
     });
     const [deepTurns, setDeepTurns] = useState(0);
+    const [userMessageCount, setUserMessageCount] = useState(0);
+    const [userCharCount, setUserCharCount] = useState(0);
+    const [userSignals, setUserSignals] = useState({
+        user: false,
+        scenario: false,
+        pain: false,
+        value: false,
+        stage: false,
+        monetize: false,
+    });
+    const [userMessageCount, setUserMessageCount] = useState(0);
+    const [userCharCount, setUserCharCount] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const prevStageRef = useRef<Stage | null>(null);
     const shouldScrollRef = useRef(false);
@@ -256,13 +311,20 @@ export function useChat() {
     const [currentStage, setCurrentStage] = useState<Stage>('info');
 
     useEffect(() => {
-        const nextStage = computeStage(summary, deepTurns);
+        const userSignalScore = Object.values(userSignals).filter(Boolean).length;
+        const nextStage = computeStage(
+            summary,
+            deepTurns,
+            userMessageCount,
+            userCharCount,
+            userSignalScore
+        );
         const currentIndex = stageOrder.indexOf(currentStage);
         const nextIndex = stageOrder.indexOf(nextStage);
         if (nextIndex > currentIndex) {
             setCurrentStage(nextStage);
         }
-    }, [summary, deepTurns, currentStage]);
+    }, [summary, deepTurns, userMessageCount, userCharCount, userSignals, currentStage]);
 
     // 阶段切换埋点
     useEffect(() => {
@@ -302,18 +364,26 @@ export function useChat() {
             const data = await response.json();
             if (data?.summary) {
                 const incoming = normalizeSummary(data.summary);
-                const merged = mergeSummary(summary, incoming);
-                setSummary(merged);
-                // 保存对话到数据库
-                const newStage = computeStage(merged, deepTurns);
-                void saveConversation(snapshot, merged, newStage);
+                setSummary(prev => {
+                    const merged = mergeSummary(prev, incoming);
+                    const userSignalScore = Object.values(userSignals).filter(Boolean).length;
+                    const newStage = computeStage(
+                        merged,
+                        deepTurns,
+                        userMessageCount,
+                        userCharCount,
+                        userSignalScore
+                    );
+                    void saveConversation(snapshot, merged, newStage);
+                    return merged;
+                });
             }
         } catch (error) {
             console.error('Error calling summary API:', error);
         } finally {
             setIsSummarizing(false);
         }
-    }, []);
+    }, [deepTurns, userMessageCount, userCharCount, userSignals]);
 
     const sendMessage = useCallback(async (content: string, isQuickAction?: string) => {
         if (!content.trim() || isLoading) return;
@@ -325,6 +395,20 @@ export function useChat() {
         if (currentStage === 'deep') {
             setDeepTurns(prev => prev + 1);
         }
+
+        setUserMessageCount(prev => prev + 1);
+        setUserCharCount(prev => prev + content.length);
+        setUserSignals(prev => {
+            const containsAny = (keywords: string[]) => keywords.some(k => content.includes(k));
+            return {
+                user: prev.user || containsAny(USER_SIGNAL_KEYWORDS.user),
+                scenario: prev.scenario || containsAny(USER_SIGNAL_KEYWORDS.scenario),
+                pain: prev.pain || containsAny(USER_SIGNAL_KEYWORDS.pain),
+                value: prev.value || containsAny(USER_SIGNAL_KEYWORDS.value),
+                stage: prev.stage || containsAny(USER_SIGNAL_KEYWORDS.stage),
+                monetize: prev.monetize || containsAny(USER_SIGNAL_KEYWORDS.monetize),
+            };
+        });
 
         // 埋点：发送消息
         trackMessageSent(content.length, currentStage);

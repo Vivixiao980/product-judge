@@ -42,6 +42,7 @@ export interface ExpertAnalysis {
   suggestions: string[];
   // 新增：针对用户目标的具体行动建议
   actionItems?: string[];
+  needsCaseSupplement?: boolean;
   status: 'pending' | 'analyzing' | 'completed' | 'error';
 }
 

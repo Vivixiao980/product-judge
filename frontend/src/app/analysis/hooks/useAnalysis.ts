@@ -83,6 +83,32 @@ function extractAnalysisResult(text: string): {
 export function useAnalysis(summary: Summary) {
   const [state, setState] = useState<AnalysisState>(initialState);
 
+  const detectCaseMention = (text: string) => {
+    const normalized = text.replace(/\s+/g, '');
+    return /案例|比如|例如|曾经|我做过|我们做过|投资过/.test(normalized);
+  };
+
+  const computeClarityCap = (summary: Summary) => {
+    const scoreLineCount = (text: string) => text.split('\n').map(l => l.trim()).filter(Boolean).length;
+    const productLines = scoreLineCount(summary.product || '');
+    const adviceLines = scoreLineCount(summary.aiAdvice || '');
+    const notesLines = scoreLineCount(summary.userNotes || '');
+    const hasCases = (summary.cases || []).length > 0;
+
+    let clarity = 0;
+    if (productLines >= 2) clarity += 2;
+    if (productLines >= 4) clarity += 1;
+    if (notesLines >= 1) clarity += 1;
+    if (adviceLines >= 2) clarity += 1;
+    if (hasCases) clarity += 1;
+
+    // 0-2: 极不清晰; 3-4: 较模糊; 5-6: 基本清晰
+    if (clarity <= 2) return 5.5;
+    if (clarity <= 4) return 6.4;
+    if (clarity <= 6) return 7.4;
+    return 8.4;
+  };
+
   const startAnalysis = useCallback(
     async (selectedExperts: string[], productType: string, userGoal: UserGoal, targetUserDescription?: string) => {
       // 初始化分析状态
@@ -168,6 +194,9 @@ export function useAnalysis(summary: Summary) {
 
           // 提取结构化结果
           const result = extractAnalysisResult(fullText);
+          const cap = computeClarityCap(summary);
+          const adjustedScore = Math.min(result.score, cap);
+          const needsCaseSupplement = !detectCaseMention(fullText) && !(summary.cases || []).length;
 
           // 更新完成状态
           setState((prev) => ({
@@ -177,11 +206,12 @@ export function useAnalysis(summary: Summary) {
                 ? {
                     ...a,
                     status: 'completed',
-                    score: result.score,
+                    score: adjustedScore,
                     strengths: result.strengths,
                     risks: result.risks,
                     suggestions: result.suggestions,
                     actionItems: result.actionItems,
+                    needsCaseSupplement,
                   }
                 : a
             ),

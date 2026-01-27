@@ -39,7 +39,48 @@ export function ExpertChat({ analysis }: ExpertChatProps) {
     return cleaned.trim();
   };
 
-  const displayText = stripAnalysisJson(analysis.analysis || '');
+  const formatSections = (raw: string) => {
+    if (!raw) return '';
+    const lines = raw.split('\n').map(l => l.trim());
+    const headingKeywords = [
+      '战略分析',
+      '产品分析',
+      '具体建议',
+      'MVP验证方向',
+      '种子用户获取',
+      '风险',
+      '建议',
+      '优势',
+      '评分',
+      '行动建议',
+      '结论',
+      '总结',
+    ];
+
+    const formatted: string[] = [];
+    for (const line of lines) {
+      if (!line) {
+        formatted.push('');
+        continue;
+      }
+      const normalized = line.replace(/[:：]\s*$/, '');
+      if (headingKeywords.includes(normalized)) {
+        formatted.push(`**${normalized}**`);
+        formatted.push('');
+      } else if (headingKeywords.some(k => line.startsWith(k))) {
+        const head = headingKeywords.find(k => line.startsWith(k));
+        const rest = line.slice(head!.length).replace(/^[:：]\s*/, '');
+        formatted.push(`**${head}**`);
+        if (rest) formatted.push(rest);
+        formatted.push('');
+      } else {
+        formatted.push(line);
+      }
+    }
+    return formatted.join('\n');
+  };
+
+  const displayText = formatSections(stripAnalysisJson(analysis.analysis || ''));
 
   return (
     <div className={`bg-white rounded-2xl shadow-sm overflow-hidden transition-all ${
@@ -114,6 +155,11 @@ export function ExpertChat({ analysis }: ExpertChatProps) {
         {/* 结构化结果 */}
         {analysis.status === 'completed' && (
           <div className="mt-4 space-y-3">
+            {analysis.needsCaseSupplement ? (
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-xs text-gray-500">案例待补充：稍后我会补充更贴近的真实案例。</p>
+              </div>
+            ) : null}
             {analysis.strengths.length > 0 && (
               <div className="bg-green-50 rounded-lg p-3">
                 <h4 className="text-sm font-medium text-green-700 mb-2">✅ 优势</h4>
