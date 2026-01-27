@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const preferredProvider = resolvePreferredProvider(inviteCode);
 
     // 取最近 16 条消息，确保有足够上下文
-    const recentMessages = messages.slice(-16);
+    const recentMessages: Message[] = messages.slice(-16);
     const conversationContext = recentMessages
         .map((m: Message) => m.content)
         .join('\n');
@@ -416,7 +416,7 @@ export async function POST(req: NextRequest) {
             .join('\n');
         const assistantText = recentMessages
             .filter((m: Message) => m.role === 'assistant')
-            .map(m => m.content)
+            .map((m: Message) => m.content)
             .join('\n');
 
         const { keywords, mentionedProducts } = await extractSearchIntent(summaryText, assistantText);
