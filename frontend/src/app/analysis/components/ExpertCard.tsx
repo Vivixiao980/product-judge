@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { Expert } from '@/data/experts';
 
@@ -11,6 +12,8 @@ interface ExpertCardProps {
 }
 
 export function ExpertCard({ expert, isSelected, isRecommended, onToggle }: ExpertCardProps) {
+  const [avatarError, setAvatarError] = useState(false);
+
   return (
     <button
       onClick={onToggle}
@@ -34,10 +37,19 @@ export function ExpertCard({ expert, isSelected, isRecommended, onToggle }: Expe
 
       <div className="flex items-start gap-3">
         <div
-          className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
+          className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg overflow-hidden"
           style={{ backgroundColor: expert.color }}
         >
-          {expert.name.charAt(0)}
+          {expert.avatar && !avatarError ? (
+            <img
+              src={expert.avatar}
+              alt={expert.name}
+              className="w-full h-full object-cover"
+              onError={() => setAvatarError(true)}
+            />
+          ) : (
+            expert.name.charAt(0)
+          )}
         </div>
 
         <div className="flex-1 min-w-0">
