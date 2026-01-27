@@ -292,6 +292,14 @@ const mergeSummary = (prev: Summary, next: Summary): Summary => {
                 .replace(/"+$/, '')
                 .replace(/,+\s*$/g, '')
                 .replace(/\s+/g, ' ')
+                .replace(/[，。、；：""''（）【】]/g, match => {
+                    const map: Record<string, string> = {
+                        '，': ',', '。': '.', '、': ',', '；': ';', '：': ':',
+                        '\u201c': '"', '\u201d': '"', '\u2018': "'", '\u2019': "'",
+                        '（': '(', '）': ')', '【': '[', '】': ']'
+                    };
+                    return map[match] || match;
+                })
                 .toLowerCase()
                 .trim();
 
@@ -316,7 +324,7 @@ const mergeSummary = (prev: Summary, next: Summary): Summary => {
         const seen = new Set<string>();
         const deduped: string[] = [];
         for (const line of combined) {
-            const key = line.replace(/\s+/g, ' ').toLowerCase();
+            const key = normalizeKey(line);
             if (seen.has(key)) continue;
             seen.add(key);
             deduped.push(line);

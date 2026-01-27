@@ -28,10 +28,8 @@ async function getKnowledgeContext(query: string): Promise<string> {
     return '';
 }
 
-const resolvePreferredProvider = (inviteCode?: string) => {
-    const normalized = (inviteCode || '').trim().toLowerCase();
-    if (normalized === 'productthink') return 'OpenRouter';
-    if (normalized === 'vivi') return 'VectorEngine';
+const resolvePreferredProvider = (_inviteCode?: string) => {
+    // 无论什么邀请码，都优先使用 VectorEngine，OpenRouter 兜底
     return undefined;
 };
 
@@ -65,13 +63,16 @@ export async function POST(req: NextRequest) {
 
 规则：
 - 全部用中文
-- 如果信息不足，写“暂无明确结论”或“待用户补充”
+- 如果信息不足，写"暂无明确结论"或"待用户补充"
 - cases 最多 3 条，可以为空数组
 - 每个字段用简洁短句，避免长段落
 - 只输出 JSON 对象，不要包含额外文字
 - 所有 key 必须使用双引号
 - 不要使用尾随逗号
-- 你会收到上一轮 summary（如有），请在其基础上增量更新，不要随意丢失已有结论`,
+- 你会收到上一轮 summary（如有），请基于最新对话内容重新整合输出，确保：
+  1. 不要重复已有信息，如果新旧内容语义相同，只保留最新、最完整的表述
+  2. 新信息应补充或替换旧信息，而非简单追加
+  3. 每个字段最终只保留 2-4 行精炼要点，删除冗余`,
         },
         ...(knowledgeContext
             ? [{

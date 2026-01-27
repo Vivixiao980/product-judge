@@ -27,10 +27,8 @@ async function getKnowledgeContext(query: string): Promise<string> {
     return '';
 }
 
-const resolvePreferredProvider = (inviteCode?: string) => {
-    const normalized = (inviteCode || '').trim().toLowerCase();
-    if (normalized === 'productthink') return 'OpenRouter';
-    if (normalized === 'vivi') return 'VectorEngine';
+const resolvePreferredProvider = (_inviteCode?: string) => {
+    // 无论什么邀请码，都优先使用 VectorEngine，OpenRouter 兜底
     return undefined;
 };
 
