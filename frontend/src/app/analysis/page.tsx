@@ -28,6 +28,7 @@ export default function AnalysisPage() {
 
   const { state, startAnalysis, goToReport, goToSelect } = useAnalysis(
     summary || {
+      productTitle: '',
       product: '',
       aiAdvice: '',
       userNotes: '',
