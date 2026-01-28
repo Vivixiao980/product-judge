@@ -12,6 +12,16 @@ export async function GET() {
   const activeProviders = getActiveProviders();
   const primaryProvider = activeProviders[0] || 'None';
 
+  // Cloudsway 用量信息（如果配置了）
+  let cloudswayInfo = null;
+  if (process.env.CLOUDSWAY_API_KEY) {
+    cloudswayInfo = {
+      configured: true,
+      label: 'Cloudsway',
+      model: process.env.CLOUDSWAY_MODEL || 'MaaS_Sonnet_4',
+    };
+  }
+
   // VectorEngine 用量信息（如果配置了）
   let vectorEngineInfo = null;
   if (process.env.VECTORENGINE_API_KEY) {
@@ -49,6 +59,7 @@ export async function GET() {
   return NextResponse.json({
     primaryProvider,
     activeProviders,
+    cloudsway: cloudswayInfo,
     vectorEngine: vectorEngineInfo,
     openRouter: openRouterInfo,
     timestamp: new Date().toISOString(),

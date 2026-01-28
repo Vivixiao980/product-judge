@@ -102,6 +102,11 @@ interface Overview {
 interface UsageData {
   primaryProvider: string;
   activeProviders: string[];
+  cloudsway?: {
+    configured: boolean;
+    label?: string;
+    model?: string;
+  };
   vectorEngine?: {
     configured: boolean;
     label?: string;
@@ -460,15 +465,39 @@ export default function AnalyticsPage() {
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-sm text-gray-600">当前主要提供商:</span>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      usageData.primaryProvider === 'VectorEngine'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-purple-100 text-purple-700'
+                      usageData.primaryProvider === 'Cloudsway'
+                        ? 'bg-blue-100 text-blue-700'
+                        : usageData.primaryProvider === 'VectorEngine'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-purple-100 text-purple-700'
                     }`}>
                       {usageData.primaryProvider}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Cloudsway 卡片 */}
+                    <div className={`bg-white rounded-xl p-4 border ${
+                      usageData.primaryProvider === 'Cloudsway'
+                        ? 'border-blue-200 ring-2 ring-blue-100'
+                        : 'border-gray-200'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-semibold text-gray-900">Cloudsway</div>
+                        {usageData.primaryProvider === 'Cloudsway' && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">主用</span>
+                        )}
+                      </div>
+                      {usageData.cloudsway?.configured ? (
+                        <>
+                          <div className="text-xs text-gray-500">模型: {usageData.cloudsway.model}</div>
+                          <div className="text-xs text-green-600 mt-1">已配置</div>
+                        </>
+                      ) : (
+                        <div className="text-xs text-gray-400">未配置</div>
+                      )}
+                    </div>
+
                     {/* VectorEngine 卡片 */}
                     <div className={`bg-white rounded-xl p-4 border ${
                       usageData.primaryProvider === 'VectorEngine'
@@ -479,6 +508,9 @@ export default function AnalyticsPage() {
                         <div className="text-sm font-semibold text-gray-900">VectorEngine</div>
                         {usageData.primaryProvider === 'VectorEngine' && (
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">主用</span>
+                        )}
+                        {usageData.primaryProvider === 'Cloudsway' && usageData.vectorEngine?.configured && (
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">备用</span>
                         )}
                       </div>
                       {usageData.vectorEngine?.configured ? (
@@ -502,7 +534,7 @@ export default function AnalyticsPage() {
                         {usageData.primaryProvider === 'OpenRouter' && (
                           <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">主用</span>
                         )}
-                        {usageData.primaryProvider === 'VectorEngine' && usageData.openRouter?.configured && (
+                        {(usageData.primaryProvider === 'VectorEngine' || usageData.primaryProvider === 'Cloudsway') && usageData.openRouter?.configured && (
                           <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">备用</span>
                         )}
                       </div>

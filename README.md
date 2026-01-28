@@ -116,7 +116,7 @@ npm install
 
 # 配置环境变量
 cp .env.local.example .env.local
-# 编辑 .env.local 文件，填入 OPENROUTER_API_KEY
+# 编辑 .env.local 文件，填入 CLOUDSWAY_AK / CLOUDSWAY_SK（优先）
 
 # 启动开发服务器
 npm run dev
@@ -165,7 +165,7 @@ python ingest.py --clear
 ### 前端
 - Next.js 16 - React 框架
 - Tailwind CSS - 样式框架
-- OpenRouter API - Claude 3.5 Sonnet
+- Cloudsway / VectorEngine / OpenRouter - 多提供商自动切换
 
 ## API 端点
 
@@ -177,19 +177,25 @@ python ingest.py --clear
 
 ## 环境变量
 
-### 推荐配置（只需要一个 API Key）
+### 推荐配置（前端只需要一个提供商）
 
-在前端和后端都使用同一个 OpenRouter API Key：
+前端优先级：Cloudsway → VectorEngine → OpenRouter
+
+**前端 (.env.local)**
+```
+CLOUDSWAY_BASE_URL=https://genaiapi.cloudsway.net/v1/ai/GMLRiwsNjqSYwmBE/chat/completions
+CLOUDSWAY_API_KEY=your_cloudsway_api_key_here
+CLOUDSWAY_MODEL=MaaS_Sonnet_4
+
+VECTORENGINE_API_KEY=your_vectorengine_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+
+BACKEND_URL=http://localhost:8000
+```
 
 **后端 (.env)**
 ```
 OPENROUTER_API_KEY=your_openrouter_api_key_here
-```
-
-**前端 (.env.local)**
-```
-OPENROUTER_API_KEY=your_openrouter_api_key_here
-BACKEND_URL=http://localhost:8000
 ```
 
 ### 模型说明

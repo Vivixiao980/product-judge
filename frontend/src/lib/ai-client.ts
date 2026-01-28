@@ -12,21 +12,37 @@ interface AIRequestOptions {
   messages: Message[];
   stream?: boolean;
   model?: string;
-  preferredProvider?: 'VectorEngine' | 'OpenRouter';
+  preferredProvider?: 'Cloudsway' | 'VectorEngine' | 'OpenRouter';
 }
 
 interface AIProvider {
   name: string;
   baseUrl: string;
-  apiKey: string | undefined;
+  apiKey?: string;
   model: string;
   headers: Record<string, string>;
+  authHeaders?: Record<string, string>;
 }
 
 function getProviders(preferredProvider?: AIRequestOptions['preferredProvider']): AIProvider[] {
   const providers: AIProvider[] = [];
 
-  // 优先使用 VectorEngine
+  // 优先使用 Cloudsway
+  if (process.env.CLOUDSWAY_API_KEY) {
+    providers.push({
+      name: 'Cloudsway',
+      baseUrl: process.env.CLOUDSWAY_BASE_URL || 'https://genaiapi.cloudsway.net/v1/ai/GMLRiwsNjqSYwmBE/chat/completions',
+      model: process.env.CLOUDSWAY_MODEL || 'MaaS_Sonnet_4',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      authHeaders: {
+        'Authorization': `Bearer ${process.env.CLOUDSWAY_API_KEY}`,
+      },
+    });
+  }
+
+  // 其次使用 VectorEngine
   if (process.env.VECTORENGINE_API_KEY) {
     providers.push({
       name: 'VectorEngine',
@@ -79,12 +95,19 @@ export async function createAICompletion(options: AIRequestOptions): Promise<{
     try {
       console.log(`[AI Client] Trying ${provider.name}...`);
 
+      const requestHeaders: Record<string, string> = {
+        ...provider.headers,
+      };
+      if (provider.apiKey) {
+        requestHeaders['Authorization'] = `Bearer ${provider.apiKey}`;
+      }
+      if (provider.authHeaders) {
+        Object.assign(requestHeaders, provider.authHeaders);
+      }
+
       const response = await fetch(provider.baseUrl, {
         method: 'POST',
-        headers: {
-          ...provider.headers,
-          'Authorization': `Bearer ${provider.apiKey}`,
-        },
+        headers: requestHeaders,
         body: JSON.stringify({
           model: options.model || provider.model,
           messages: options.messages,

@@ -29,7 +29,7 @@ async function getKnowledgeContext(query: string): Promise<string> {
 }
 
 const resolvePreferredProvider = (_inviteCode?: string) => {
-    // 无论什么邀请码，都优先使用 VectorEngine，OpenRouter 兜底
+    // 无论什么邀请码，都优先使用 Cloudsway，其次 VectorEngine，OpenRouter 兜底
     return undefined;
 };
 
